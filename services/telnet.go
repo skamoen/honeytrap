@@ -31,12 +31,14 @@
 package services
 
 import (
-	"bufio"
+	"bytes"
 	"io"
 	"net"
+	"strings"
+	"time"
 
-	"github.com/honeytrap/honeytrap/event"
 	"github.com/honeytrap/honeytrap/pushers"
+	"github.com/honeytrap/honeytrap/services/telnet"
 )
 
 var (
@@ -63,7 +65,6 @@ func (s *telnetService) SetChannel(c pushers.Channel) {
 func (s *telnetService) Handle(conn net.Conn) error {
 	defer conn.Close()
 
-	b := bufio.NewReader(conn)
 	for {
 		line, err := b.ReadBytes('\n')
 		if err == io.EOF {
@@ -72,15 +73,114 @@ func (s *telnetService) Handle(conn net.Conn) error {
 			log.Error(err.Error())
 			continue
 		}
+		lastInput = time.Now()
+	}
+}
 
-		s.c.Send(event.New(
-			SensorLow,
-			event.Category("echo"),
-			event.Payload([]byte(line)),
-		))
+func handleNewline(conn net.Conn, state [3]string, input *bytes.Buffer, metrics *telnet.Metrics) [3]string {
+	if state[0] == "username" {
+		// Read all characters in the buffer
+		state[1] = input.String()
+		metrics.Usernames = append(metrics.Usernames, state[1])
 
-		conn.Write(line)
+		// Clear the buffer
+		input.Reset()
+
+		// Switch to password entry
+		state[0] = "password"
+		conn.Write([]byte("\r\nPassword: "))
+	} else {
+		// Store all characters in the buffer
+		state[2] = input.String()
+
+		metrics.Passwords = append(metrics.Passwords, state[2])
+		metrics.Entries = append(metrics.Entries, strings.Join(state[1:], ":"))
+
+		// Reset the buffers and state
+		input.Reset()
+		state[0] = "username"
+		state[1] = ""
+		state[2] = ""
+
+		conn.Write([]byte("\r\nWrong password!\r\n\r\nUsername: "))
+	}
+	return state
+}
+
+func negotiateTelnet(conn net.Conn) (*telnet.Negotiation, error) {
+	negotiation := new(telnet.Negotiation)
+	// Write IAC DO LINE MODE IAC WILL ECH
+	conn.Write([]byte{telnet.IAC, telnet.Do, telnet.Linemode, telnet.IAC, telnet.Will, telnet.Echo})
+
+	// Expect IAC WILL LINEMODE
+	// Expect IAC DO ECHO
+
+	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	// Read 3 bytes per read for commands
+	var buffer [1]byte
+	_, err := conn.Read(buffer[0:])
+	if err != nil {
+		return negotiation, err
 	}
 
-	return nil
+	negotiation.Bytes = append(negotiation.Bytes, int(buffer[0]))
+
+	// IAC, start of command
+	if buffer[0] == telnet.IAC {
+		var option byte
+		validOption := false
+
+		for {
+			conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+			// Read next byte, expect option
+			_, err := conn.Read(buffer[0:])
+			if err != nil {
+				return negotiation, err
+			}
+			negotiation.Bytes = append(negotiation.Bytes, int(buffer[0]))
+
+			// If null byte, try again
+			if buffer[0] == 0 {
+				continue
+			}
+
+			if buffer[0] == telnet.IAC {
+				// New Command, reset and read new byte
+				option = 0
+				validOption = false
+				continue
+			}
+			// DO, WILL, WONT, DONT
+			if buffer[0] == telnet.Do || buffer[0] == telnet.Will || buffer[0] == telnet.Wont || buffer[0] == telnet.Dont {
+				// Option is a valid Telnet option
+				option = buffer[0]
+				validOption = true
+				continue
+			}
+
+			// ECHO
+			if buffer[0] == telnet.Echo {
+				if validOption {
+					negotiation.CommandEcho = true
+					if option == telnet.Do {
+						negotiation.ValueEcho = true
+					}
+				}
+			}
+			// LINEMODE close the socket
+			if buffer[0] == telnet.Linemode {
+				if validOption {
+					negotiation.CommandLinemode = true
+					if option == telnet.Will {
+						negotiation.ValueLinemode = true
+					}
+				}
+			}
+
+			if negotiation.CommandEcho && negotiation.CommandLinemode {
+				break
+			}
+		}
+	}
+	return negotiation, nil
 }
