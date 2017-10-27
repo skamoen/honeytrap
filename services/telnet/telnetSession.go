@@ -20,7 +20,7 @@ type Session struct {
 }
 
 type Metrics struct {
-	Input      []int
+	Input      []byte
 	InputTimes []int64
 	Usernames  []string
 	Passwords  []string
@@ -29,7 +29,7 @@ type Metrics struct {
 
 // Negotiation is the Telnet Negotiation data from the beginning of a session
 type Negotiation struct {
-	Bytes                        []int
+	Bytes                        []byte
 	CommandEcho, CommandLinemode bool
 	ValueEcho, ValueLinemode     bool
 }
@@ -47,7 +47,7 @@ func (s *Session) LogMetrics(c pushers.Channel) {
 	}
 
 	c.Send(event.New(
-		event.Sensor("low-interaction"),
+		event.Service("telnet"),
 		event.Category("session"),
 		event.Type("metrics"),
 		event.DestinationAddr(s.LocalAddr),
@@ -58,9 +58,9 @@ func (s *Session) LogMetrics(c pushers.Channel) {
 
 func (s *Session) LogNegotiation(c pushers.Channel) {
 	c.Send(event.New(
-		event.Sensor("low-interaction"),
+		event.Service("telnet"),
 		event.Category("session"),
-		event.Type("Negotiation"),
+		event.Type("negotiation"),
 		event.DestinationAddr(s.LocalAddr),
 		event.SourceAddr(s.RemoteAddr),
 		event.Custom("bytes", s.Negotiation.Bytes),
