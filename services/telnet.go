@@ -123,7 +123,7 @@ func negotiateTelnet(conn net.Conn) (*telnet.Negotiation, error) {
 		return negotiation, err
 	}
 
-	negotiation.Bytes = append(negotiation.Bytes, int(buffer[0]))
+	negotiation.Bytes = append(negotiation.Bytes, buffer[0])
 
 	// IAC, start of command
 	if buffer[0] == telnet.IAC {
@@ -137,7 +137,7 @@ func negotiateTelnet(conn net.Conn) (*telnet.Negotiation, error) {
 			if err != nil {
 				return negotiation, err
 			}
-			negotiation.Bytes = append(negotiation.Bytes, int(buffer[0]))
+			negotiation.Bytes = append(negotiation.Bytes, buffer[0])
 
 			// If null byte, try again
 			if buffer[0] == 0 {
