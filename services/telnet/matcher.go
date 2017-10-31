@@ -1,14 +1,14 @@
-package matcher
+package telnet
 
 import (
 	"bytes"
 	"fmt"
-
-	"github.com/honeytrap/honeytrap/services/telnet"
+	"net"
 )
 
 var (
 	negotiations [][]*negotiateCommand
+	connections  = make(map[string]map[string]int, 0)
 )
 
 type negotiateCommand struct {
@@ -17,7 +17,7 @@ type negotiateCommand struct {
 	subcommands []byte
 }
 
-func SubmitNegotiation(n *telnet.Negotiation, id int) {
+func SubmitNegotiation(n *Negotiation, id int) {
 	pn := parseCommands(n)
 	seenBefore := checkNegotiation(pn)
 	if seenBefore {
@@ -27,10 +27,10 @@ func SubmitNegotiation(n *telnet.Negotiation, id int) {
 	}
 }
 
-func parseCommands(n *telnet.Negotiation) []*negotiateCommand {
+func parseCommands(n *Negotiation) []*negotiateCommand {
 	commands := make([]*negotiateCommand, 0)
 
-	split := bytes.Split(n.Bytes, []byte{telnet.IAC})
+	split := bytes.Split(n.Bytes, []byte{IAC})
 
 	for _, c := range split {
 		if len(c) > 0 {
@@ -39,7 +39,7 @@ func parseCommands(n *telnet.Negotiation) []*negotiateCommand {
 				command: c[1],
 			}
 
-			if c[1] == telnet.SubNegotiationStart || len(c) > 2 {
+			if c[1] == SubNegotiationStart || len(c) > 2 {
 				command.subcommands = c[2:]
 			}
 			commands = append(commands, command)
@@ -60,4 +60,22 @@ func checkNegotiation(n []*negotiateCommand) bool {
 		}
 	}
 	return false
+}
+
+// RegisterConnection stores the incoming connection attempt and checks if this IP has been observed before
+func RegisterConnection(local, remote net.Addr) {
+	localHost, _, _ := net.SplitHostPort(local.String())
+	remoteHost, _, _ := net.SplitHostPort(remote.String())
+	if connections[localHost] == nil {
+		// Never saw a connection to this local IP
+		connections[localHost] = make(map[string]int, 1)
+		// Register the remote address
+		localAddress := connections[localHost]
+		localAddress[remoteHost] = 1
+	} else {
+		fmt.Println("Connection seen before")
+		localAddress := connections[localHost]
+		localAddress[remoteHost]++
+	}
+
 }
