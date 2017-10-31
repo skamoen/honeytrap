@@ -35,11 +35,17 @@ type Negotiation struct {
 }
 
 func (s *Session) LogMetrics(c pushers.Channel) {
+	// Convert raw bytes to "readable" int values
+	bytes := make([]int, len(s.Metrics.Input))
+	for i, b := range s.Metrics.Input {
+		bytes[i] = int(b)
+	}
+
 	metricsMap := map[string]interface{}{
 		"raw":              s.Raw,
 		"session_start":    s.StartTime,
 		"session_duration": time.Since(s.StartTime) / 1000000,
-		"input_bytes":      s.Metrics.Input,
+		"input_bytes":      bytes,
 		"input_times":      s.Metrics.InputTimes,
 		"usernames":        s.Metrics.Usernames,
 		"passwords":        s.Metrics.Passwords,
@@ -57,13 +63,18 @@ func (s *Session) LogMetrics(c pushers.Channel) {
 }
 
 func (s *Session) LogNegotiation(c pushers.Channel) {
+	// Convert raw bytes to "readable" int values
+	bytes := make([]int, len(s.Negotiation.Bytes))
+	for i, b := range s.Negotiation.Bytes {
+		bytes[i] = int(b)
+	}
 	c.Send(event.New(
 		event.Service("telnet"),
 		event.Category("session"),
 		event.Type("negotiation"),
 		event.DestinationAddr(s.LocalAddr),
 		event.SourceAddr(s.RemoteAddr),
-		event.Custom("bytes", s.Negotiation.Bytes),
+		event.Custom("bytes", bytes),
 		event.Custom("echo", s.Negotiation.ValueEcho),
 		event.Custom("linemode", s.Negotiation.ValueLinemode),
 	))
