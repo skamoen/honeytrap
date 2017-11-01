@@ -51,7 +51,11 @@ import (
 	"github.com/honeytrap/honeytrap/pushers/eventbus"
 
 	"github.com/honeytrap/honeytrap/services"
+<<<<<<< HEAD
 	_ "github.com/honeytrap/honeytrap/services/ssh"
+=======
+	_ "github.com/honeytrap/honeytrap/services/telnet"
+>>>>>>> Move telnet.go to telnet package
 	_ "github.com/honeytrap/honeytrap/services/vnc"
 
 	"github.com/honeytrap/honeytrap/listener"
