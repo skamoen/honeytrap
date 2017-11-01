@@ -52,6 +52,7 @@ import (
 
 	"github.com/honeytrap/honeytrap/services"
 	_ "github.com/honeytrap/honeytrap/services/ssh"
+	_ "github.com/honeytrap/honeytrap/services/telnet"
 	_ "github.com/honeytrap/honeytrap/services/vnc"
 
 	"github.com/honeytrap/honeytrap/listener"
