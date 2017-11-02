@@ -32,6 +32,7 @@ type Negotiation struct {
 	Bytes                        []byte
 	CommandEcho, CommandLinemode bool
 	ValueEcho, ValueLinemode     bool
+	seenBefore                   bool
 }
 
 func (s *Session) LogMetrics(c pushers.Channel) {
@@ -77,5 +78,6 @@ func (s *Session) LogNegotiation(c pushers.Channel) {
 		event.Custom("bytes", bytes),
 		event.Custom("echo", s.Negotiation.ValueEcho),
 		event.Custom("linemode", s.Negotiation.ValueLinemode),
+		event.Custom("seen", s.Negotiation.seenBefore),
 	))
 }
