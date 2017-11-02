@@ -2,7 +2,6 @@ package telnet
 
 import (
 	"bytes"
-	"fmt"
 	"net"
 )
 
@@ -21,7 +20,7 @@ func SubmitNegotiation(n *Negotiation, id int) {
 	pn := parseCommands(n)
 	seenBefore := checkNegotiation(pn)
 	if seenBefore {
-		fmt.Println("Negotiation seen before!")
+		n.seenBefore = true
 	} else {
 		negotiations = append(negotiations, pn)
 	}
@@ -51,11 +50,13 @@ func parseCommands(n *Negotiation) []*negotiateCommand {
 
 func checkNegotiation(n []*negotiateCommand) bool {
 	for _, negotiation := range negotiations {
-		for index, command := range negotiation {
-			if command.option == n[index].option &&
-				command.command == n[index].command &&
-				bytes.Compare(command.subcommands, n[index].subcommands) == 0 {
-				return true
+		if len(negotiation) == len(n) {
+			for index, command := range negotiation {
+				if command.option == n[index].option &&
+					command.command == n[index].command &&
+					bytes.Compare(command.subcommands, n[index].subcommands) == 0 {
+					return true
+				}
 			}
 		}
 	}
@@ -73,7 +74,6 @@ func RegisterConnection(local, remote net.Addr) {
 		localAddress := connections[localHost]
 		localAddress[remoteHost] = 1
 	} else {
-		fmt.Println("Connection seen before")
 		localAddress := connections[localHost]
 		localAddress[remoteHost]++
 	}

@@ -43,6 +43,7 @@ import (
 )
 
 var log = logging.MustGetLogger("services/telnet")
+var ID = 0
 
 var (
 	_ = services.Register("telnet", Telnet)
@@ -72,12 +73,14 @@ func (s *telnetService) Handle(conn net.Conn) error {
 	timeout := 30 * time.Second
 	var err error
 
+	ID++
 	session := &Session{
 		StartTime:   time.Now(),
 		RemoteAddr:  conn.RemoteAddr(),
 		LocalAddr:   conn.LocalAddr(),
 		Metrics:     new(Metrics),
 		Negotiation: new(Negotiation),
+		ID:          ID,
 	}
 	// Save the current state, username and password
 	state := [3]string{"username", "", ""}
@@ -86,9 +89,8 @@ func (s *telnetService) Handle(conn net.Conn) error {
 
 	// Negotiate linemode and echo. Results will be stored in the session.
 	session.Negotiation, err = negotiateTelnet(conn)
-	session.LogNegotiation(s.c)
 	SubmitNegotiation(session.Negotiation, session.ID)
-	// s.Negotiation.Match(d)
+	session.LogNegotiation(s.c)
 
 	// If telnet Negotiation fails, save the inputbytes as a raw session
 	if err != nil {
