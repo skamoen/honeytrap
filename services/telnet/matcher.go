@@ -32,7 +32,7 @@ func parseCommands(n *Negotiation) []*negotiateCommand {
 	split := bytes.Split(n.Bytes, []byte{IAC})
 
 	for _, c := range split {
-		if len(c) > 0 {
+		if len(c) > 1 {
 			command := &negotiateCommand{
 				option:  c[0],
 				command: c[1],
