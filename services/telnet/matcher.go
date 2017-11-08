@@ -3,11 +3,14 @@ package telnet
 import (
 	"bytes"
 	"net"
+
+	"golang.org/x/sync/syncmap"
 )
 
 var (
 	negotiations [][]*negotiateCommand
-	connections  = make(map[string]map[string]int, 0)
+	connections  = new(syncmap.Map)
+	// connections  = make(map[string]map[string]int, 0)
 )
 
 type negotiateCommand struct {
@@ -67,15 +70,12 @@ func checkNegotiation(n []*negotiateCommand) bool {
 func RegisterConnection(local, remote net.Addr) {
 	localHost, _, _ := net.SplitHostPort(local.String())
 	remoteHost, _, _ := net.SplitHostPort(remote.String())
-	if connections[localHost] == nil {
-		// Never saw a connection to this local IP
-		connections[localHost] = make(map[string]int, 1)
-		// Register the remote address
-		localAddress := connections[localHost]
-		localAddress[remoteHost] = 1
-	} else {
-		localAddress := connections[localHost]
-		localAddress[remoteHost]++
-	}
 
+	i, _ := connections.LoadOrStore(localHost, new(syncmap.Map))
+	localHostMap := i.(*syncmap.Map)
+	i, loaded := localHostMap.LoadOrStore(remoteHost, 1)
+	if loaded {
+		count := i.(int)
+		localHostMap.Store(remoteHost, count+1)
+	}
 }
