@@ -156,9 +156,19 @@ func (s *telnetService) Handle(conn net.Conn) error {
 }
 
 func handleNewline(conn net.Conn, state [3]string, input *bytes.Buffer, metrics *Metrics) [3]string {
+	inputString := input.String()
+	if strings.Contains(inputString, "/bin/busybox") {
+		state[0] = "busybox"
+		index := strings.Index(inputString, "x ")
+		appName := inputString[index+2:]
+		conn.Write([]byte("\r\n" + appName + ": applet not found\r\n~"))
+		// fmt.Println("Found app", appName)
+		return state
+	}
+
 	if state[0] == "username" {
 		// Read all characters in the buffer
-		state[1] = input.String()
+		state[1] = inputString
 		metrics.Usernames = append(metrics.Usernames, state[1])
 
 		// Clear the buffer
@@ -169,7 +179,7 @@ func handleNewline(conn net.Conn, state [3]string, input *bytes.Buffer, metrics 
 		conn.Write([]byte("\r\nPassword: "))
 	} else {
 		// Store all characters in the buffer
-		state[2] = input.String()
+		state[2] = inputString
 
 		metrics.Passwords = append(metrics.Passwords, state[2])
 		metrics.Entries = append(metrics.Entries, strings.Join(state[1:], ":"))
