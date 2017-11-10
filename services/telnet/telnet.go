@@ -41,6 +41,10 @@ import (
 
 	"github.com/honeytrap/honeytrap/pushers"
 	"github.com/honeytrap/honeytrap/services"
+
+	"github.com/honeytrap/honeytrap/services/telnet/collector"
+	u "github.com/honeytrap/honeytrap/services/telnet/util"
+	// Lazy import for util structs
 )
 
 var log = logging.MustGetLogger("services/telnet")
@@ -56,14 +60,16 @@ func Telnet(options ...services.ServicerFunc) services.Servicer {
 	for _, o := range options {
 		o(s)
 	}
-	s.allowedCredentials.Store("admin:atlantis", true)
+	s.allowedCredentials.Store("admin:admin", true)
 	s.allowedCredentials.Store("admin:Win1doW$", true)
+	s.col = collector.New()
 	return s
 }
 
 type telnetService struct {
 	c                  pushers.Channel
 	allowedCredentials syncmap.Map
+	col                *collector.Collector
 }
 
 func (s *telnetService) SetChannel(c pushers.Channel) {
@@ -71,36 +77,29 @@ func (s *telnetService) SetChannel(c pushers.Channel) {
 }
 
 func (s *telnetService) Handle(conn net.Conn) error {
-	defer conn.Close()
-	RegisterConnection(conn.LocalAddr(), conn.RemoteAddr())
+	// Declare variables used
 	banner := []byte("\nUser Access Verification\r\nUsername:")
 	timeout := 30 * time.Second
+	currentInput := make([]byte, 0)
+	currentInputTimes := make([]int64, 0)
+	rawSession := false
+
 	var err error
 
-	ID++
-	session := &Session{
-		StartTime:   time.Now(),
-		RemoteAddr:  conn.RemoteAddr(),
-		LocalAddr:   conn.LocalAddr(),
-		Metrics:     new(Metrics),
-		Negotiation: new(Negotiation),
-		ID:          ID,
-	}
+	defer conn.Close()
+	// Send the connection to the collector
+	session := s.col.RegisterConnection(conn)
+
 	// Save the current state, username and password
 	state := [3]string{"username", "", ""}
 
-	defer session.LogMetrics(s.c)
-
 	// Negotiate linemode and echo. Results will be stored in the session.
-	session.Negotiation, err = s.negotiateTelnet(conn)
-	SubmitNegotiation(session.Negotiation, session.ID)
-	session.LogNegotiation(s.c)
+	negotiation, err := s.negotiateTelnet(conn)
+	s.col.SubmitNegotiation(negotiation)
 
+	//TODO(skamoen): Handle time-out error in the negotiation method
 	// If telnet Negotiation fails, save the inputbytes as a raw session
-	if err != nil {
-		session.Raw = true
-		session.Metrics.Input = append(session.Metrics.Input, session.Negotiation.Bytes...)
-	}
+	rawSession = (err != nil)
 
 	// Send the banner to the remote host
 	conn.Write(banner)
@@ -120,8 +119,8 @@ func (s *telnetService) Handle(conn net.Conn) error {
 		}
 
 		// Save the received input regardless of content
-		session.Metrics.Input = append(session.Metrics.Input, buf[0])
-		session.Metrics.InputTimes = append(session.Metrics.InputTimes, time.Since(lastInput).Nanoseconds()/1000000)
+		currentInput = append(currentInput, buf[0])
+		currentInputTimes = append(currentInputTimes, time.Since(lastInput).Nanoseconds()/1000000)
 
 		switch buf[0] {
 		case 127: // DEL
@@ -131,7 +130,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 			if input.Len() > 0 {
 				// Remove the previous character from the buffer
 				input.Truncate(input.Len() - 1)
-				if state[0] != "password" && !session.Raw {
+				if state[0] != "password" && !rawSession {
 					// Remove the character at the remote host
 					conn.Write([]byte("\b \b"))
 				}
@@ -139,16 +138,19 @@ func (s *telnetService) Handle(conn net.Conn) error {
 		case 0: // null
 			fallthrough
 		case 10: // New Line
+			inputString := input.String()
+			input.Reset()
+
 			if state[0] == "interaction" {
-				s.lowInteraction(conn, &input)
+				s.lowInteraction(conn, inputString)
 			} else {
-				state = s.handleNewline(conn, state, &input, session.Metrics)
+				state = s.handleNewline(conn, state, inputString, session)
 			}
 		case 13:
 		default:
-			if state[0] != "password" && !session.Raw {
+			if state[0] != "password" && !rawSession {
 				// Echo the character when in username mode
-				if session.Negotiation.ValueEcho {
+				if negotiation.ValueEcho {
 					_, err := conn.Write(buf[0:n])
 					if err != nil {
 					}
@@ -161,15 +163,12 @@ func (s *telnetService) Handle(conn net.Conn) error {
 	}
 }
 
-func (s *telnetService) handleNewline(conn net.Conn, state [3]string, input *bytes.Buffer, metrics *Metrics) [3]string {
-	inputString := input.String()
-
-	input.Reset()
+func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputString string, session *u.Session) [3]string {
 
 	if state[0] == "username" {
 		// Read all characters in the buffer
 		state[1] = inputString
-		metrics.Usernames = append(metrics.Usernames, state[1])
+		session.Credentials.Usernames = append(session.Credentials.Usernames, state[1])
 
 		// Switch to password entry
 		state[0] = "password"
@@ -180,8 +179,8 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, input *byt
 
 		currentEntry := strings.Join(state[1:], ":")
 
-		metrics.Passwords = append(metrics.Passwords, state[2])
-		metrics.Entries = append(metrics.Entries, currentEntry)
+		session.Credentials.Passwords = append(session.Credentials.Passwords, state[2])
+		session.Credentials.Entries = append(session.Credentials.Entries, currentEntry)
 
 		state[1] = ""
 		state[2] = ""
@@ -197,10 +196,10 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, input *byt
 	return state
 }
 
-func (s *telnetService) negotiateTelnet(conn net.Conn) (*Negotiation, error) {
-	negotiation := new(Negotiation)
+func (s *telnetService) negotiateTelnet(conn net.Conn) (*u.Negotiation, error) {
+	negotiation := new(u.Negotiation)
 	// Write IAC DO LINE MODE IAC WILL ECH
-	conn.Write([]byte{IAC, Do, Linemode, IAC, Will, Echo})
+	conn.Write([]byte{u.IAC, u.Do, u.Linemode, u.IAC, u.Will, u.Echo})
 
 	// Expect IAC WILL LINEMODE
 	// Expect IAC DO ECHO
@@ -216,7 +215,7 @@ func (s *telnetService) negotiateTelnet(conn net.Conn) (*Negotiation, error) {
 	negotiation.Bytes = append(negotiation.Bytes, buffer[0])
 
 	// IAC, start of command
-	if buffer[0] == IAC {
+	if buffer[0] == u.IAC {
 		var option byte
 		validOption := false
 
@@ -234,14 +233,14 @@ func (s *telnetService) negotiateTelnet(conn net.Conn) (*Negotiation, error) {
 				continue
 			}
 
-			if buffer[0] == IAC {
+			if buffer[0] == u.IAC {
 				// New Command, reset and read new byte
 				option = 0
 				validOption = false
 				continue
 			}
 			// DO, WILL, WONT, DONT
-			if buffer[0] == Do || buffer[0] == Will || buffer[0] == Wont || buffer[0] == Dont {
+			if buffer[0] == u.Do || buffer[0] == u.Will || buffer[0] == u.Wont || buffer[0] == u.Dont {
 				// Option is a valid Telnet option
 				option = buffer[0]
 				validOption = true
@@ -249,19 +248,19 @@ func (s *telnetService) negotiateTelnet(conn net.Conn) (*Negotiation, error) {
 			}
 
 			// ECHO
-			if buffer[0] == Echo {
+			if buffer[0] == u.Echo {
 				if validOption {
 					negotiation.CommandEcho = true
-					if option == Do {
+					if option == u.Do {
 						negotiation.ValueEcho = true
 					}
 				}
 			}
 			// LINEMODE close the socket
-			if buffer[0] == Linemode {
+			if buffer[0] == u.Linemode {
 				if validOption {
 					negotiation.CommandLinemode = true
-					if option == Will {
+					if option == u.Will {
 						negotiation.ValueLinemode = true
 					}
 				}
