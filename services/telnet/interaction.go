@@ -1,7 +1,6 @@
 package telnet
 
 import (
-	"bytes"
 	"net"
 	"strings"
 )
@@ -10,10 +9,7 @@ type Interaction struct {
 	commands []string
 }
 
-func (s *telnetService) lowInteraction(conn net.Conn, input *bytes.Buffer) {
-	inputString := input.String()
-	input.Reset()
-
+func (s *telnetService) lowInteraction(conn net.Conn, inputString string) {
 	switch {
 	case inputString == "whoami":
 		conn.Write([]byte("\r\nadmin\r\n"))
