@@ -1,4 +1,4 @@
-package telnet
+package util
 
 const (
 	Binary                       byte = 0
