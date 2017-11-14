@@ -18,19 +18,22 @@ type Session struct {
 
 // Negotiation is the Telnet Negotiation data from the beginning of a session
 type Negotiation struct {
+	Session                      *Session
 	Bytes                        []byte
 	CommandEcho, CommandLinemode bool
 	ValueEcho, ValueLinemode     bool
-	SeenBefore                   bool
+	Valid                        bool
 }
 
 type Credentials struct {
+	Session                       *Session
 	Input                         []byte
 	InputTimes                    []int64
 	Usernames, Passwords, Entries []string
 }
 
 type Interaction struct {
+	Session    *Session
 	Input      []byte
 	InputTimes []int64
 	Commands   []string

@@ -11,10 +11,10 @@ import (
 )
 
 type Collector struct {
-	negotiations [][]*negotiateCommand
-	connections  *syncmap.Map // map[local][remote]:amount
-	sessions     *syncmap.Map // map[remote]:*Session
-	c            pushers.Channel
+	// negotiations [][]*negotiateCommand
+	connections *syncmap.Map // map[local][remote]:amount
+	sessions    *syncmap.Map // map[remote]:*Session
+	c           pushers.Channel
 }
 
 // New returns a new Collector
@@ -51,13 +51,15 @@ func (c *Collector) RegisterConnection(conn net.Conn) *telnet.Session {
 
 // SubmitNegotiation saves a completed negotiation result
 func (c *Collector) SubmitNegotiation(n *telnet.Negotiation) {
-	pn := parseCommands(n)
-	seenBefore := checkNegotiation(c.negotiations, pn)
-	if seenBefore {
-		n.SeenBefore = true
-	} else {
-		c.negotiations = append(c.negotiations, pn)
-	}
+
+	c.c
+	// pn := parseCommands(n)
+	// seenBefore := checkNegotiation(c.negotiations, pn)
+	// if seenBefore {
+	// 	n.SeenBefore = true
+	// } else {
+	// 	c.negotiations = append(c.negotiations, pn)
+	// }
 }
 
 func parseCommands(n *telnet.Negotiation) []*negotiateCommand {
@@ -82,20 +84,20 @@ func parseCommands(n *telnet.Negotiation) []*negotiateCommand {
 	return commands
 }
 
-func checkNegotiation(negotiations [][]*negotiateCommand, n []*negotiateCommand) bool {
-	for _, negotiation := range negotiations {
-		if len(negotiation) == len(n) {
-			for index, command := range negotiation {
-				if command.option == n[index].option &&
-					command.command == n[index].command &&
-					bytes.Compare(command.subcommands, n[index].subcommands) == 0 {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
+// func checkNegotiation(negotiations [][]*negotiateCommand, n []*negotiateCommand) bool {
+// 	for _, negotiation := range negotiations {
+// 		if len(negotiation) == len(n) {
+// 			for index, command := range negotiation {
+// 				if command.option == n[index].option &&
+// 					command.command == n[index].command &&
+// 					bytes.Compare(command.subcommands, n[index].subcommands) == 0 {
+// 					return true
+// 				}
+// 			}
+// 		}
+// 	}
+// 	return false
+// }
 
 type negotiateCommand struct {
 	option      byte
