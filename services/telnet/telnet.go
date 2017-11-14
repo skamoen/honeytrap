@@ -63,6 +63,7 @@ func Telnet(options ...services.ServicerFunc) services.Servicer {
 	s.allowedCredentials.Store("admin:admin", true)
 	s.allowedCredentials.Store("admin:Win1doW$", true)
 	s.col = collector.New()
+	s.col.SetChannel(s.c)
 	return s
 }
 
@@ -80,23 +81,21 @@ func (s *telnetService) Handle(conn net.Conn) error {
 	// Declare variables used
 	banner := []byte("\nUser Access Verification\r\nUsername:")
 	timeout := 30 * time.Second
-	currentInput := make([]byte, 0)
-	currentInputTimes := make([]int64, 0)
-	rawSession := false
-
-	var err error
+	// currentInput := make([]byte, 0)
+	// currentInputTimes := make([]int64, 0)
 
 	defer conn.Close()
-	// Send the connection to the collector
 	session := s.col.RegisterConnection(conn)
+	// Send the connection to the collector
+	defer s.col.LogCredentials(session.Credentials)
+	defer s.col.LogSession(session)
 
 	// Save the current state, username and password
 	state := [3]string{"username", "", ""}
 
 	// Negotiate linemode and echo. Results will be stored in the session.
-	negotiation, _ := s.negotiateTelnet(conn)
-	negotiation.Session = session
-	s.col.SubmitNegotiation(negotiation)
+	s.negotiateTelnet(conn, session)
+	s.col.SubmitNegotiation(session.Negotiation)
 
 	// Send the banner to the remote host
 	conn.Write(banner)
@@ -116,8 +115,16 @@ func (s *telnetService) Handle(conn net.Conn) error {
 		}
 
 		// Save the received input regardless of content
-		currentInput = append(currentInput, buf[0])
-		currentInputTimes = append(currentInputTimes, time.Since(lastInput).Nanoseconds()/1000000)
+		switch state[0] {
+		case "username":
+			fallthrough
+		case "password":
+			session.Credentials.Input = append(session.Credentials.Input, buf[0])
+			session.Credentials.InputTimes = append(session.Credentials.InputTimes, time.Since(lastInput).Nanoseconds()/1000000)
+		case "interaction":
+			session.Interaction.Input = append(session.Interaction.Input, buf[0])
+			session.Interaction.InputTimes = append(session.Interaction.InputTimes, time.Since(lastInput).Nanoseconds()/1000000)
+		}
 
 		switch buf[0] {
 		case 127: // DEL
@@ -127,7 +134,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 			if input.Len() > 0 {
 				// Remove the previous character from the buffer
 				input.Truncate(input.Len() - 1)
-				if state[0] != "password" && negotiation.Valid {
+				if state[0] != "password" && session.Negotiation.Valid {
 					// Remove the character at the remote host
 					conn.Write([]byte("\b \b"))
 				}
@@ -139,15 +146,16 @@ func (s *telnetService) Handle(conn net.Conn) error {
 			input.Reset()
 
 			if state[0] == "interaction" {
-				s.lowInteraction(conn, inputString)
+				// Process the command and add it to the list of commands
+				session.Interaction.Commands = append(session.Interaction.Commands, s.lowInteraction(conn, inputString))
 			} else {
 				state = s.handleNewline(conn, state, inputString, session)
 			}
 		case 13:
 		default:
-			if state[0] != "password" && negotiation.Valid {
+			if state[0] != "password" && session.Negotiation.Valid {
 				// Echo the character when in username mode
-				if negotiation.ValueEcho {
+				if session.Negotiation.ValueEcho {
 					_, err := conn.Write(buf[0:n])
 					if err != nil {
 					}
@@ -183,6 +191,7 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputStrin
 		state[2] = ""
 
 		if _, ok := s.allowedCredentials.Load(currentEntry); ok {
+			s.col.LogCredentials(session.Credentials)
 			state[0] = "interaction"
 			conn.Write([]byte("\r\n# "))
 		} else {
@@ -193,8 +202,8 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputStrin
 	return state
 }
 
-func (s *telnetService) negotiateTelnet(conn net.Conn) (*u.Negotiation, error) {
-	negotiation := new(u.Negotiation)
+func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.Negotiation, error) {
+	negotiation := session.Negotiation
 	// Write IAC DO LINE MODE IAC WILL ECH
 	conn.Write([]byte{u.IAC, u.Do, u.Linemode, u.IAC, u.Will, u.Echo})
 
