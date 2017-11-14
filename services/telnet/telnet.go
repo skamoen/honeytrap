@@ -94,12 +94,9 @@ func (s *telnetService) Handle(conn net.Conn) error {
 	state := [3]string{"username", "", ""}
 
 	// Negotiate linemode and echo. Results will be stored in the session.
-	negotiation, err := s.negotiateTelnet(conn)
+	negotiation, _ := s.negotiateTelnet(conn)
+	negotiation.Session = session
 	s.col.SubmitNegotiation(negotiation)
-
-	//TODO(skamoen): Handle time-out error in the negotiation method
-	// If telnet Negotiation fails, save the inputbytes as a raw session
-	rawSession = (err != nil)
 
 	// Send the banner to the remote host
 	conn.Write(banner)
@@ -130,7 +127,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 			if input.Len() > 0 {
 				// Remove the previous character from the buffer
 				input.Truncate(input.Len() - 1)
-				if state[0] != "password" && !rawSession {
+				if state[0] != "password" && negotiation.Valid {
 					// Remove the character at the remote host
 					conn.Write([]byte("\b \b"))
 				}
@@ -148,7 +145,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 			}
 		case 13:
 		default:
-			if state[0] != "password" && !rawSession {
+			if state[0] != "password" && negotiation.Valid {
 				// Echo the character when in username mode
 				if negotiation.ValueEcho {
 					_, err := conn.Write(buf[0:n])
@@ -209,6 +206,7 @@ func (s *telnetService) negotiateTelnet(conn net.Conn) (*u.Negotiation, error) {
 	var buffer [1]byte
 	_, err := conn.Read(buffer[0:])
 	if err != nil {
+		negotiation.Valid = false
 		return negotiation, err
 	}
 
@@ -267,6 +265,7 @@ func (s *telnetService) negotiateTelnet(conn net.Conn) (*u.Negotiation, error) {
 			}
 
 			if negotiation.CommandEcho && negotiation.CommandLinemode {
+				negotiation.Valid = true
 				break
 			}
 		}
