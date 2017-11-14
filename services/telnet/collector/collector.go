@@ -24,17 +24,26 @@ func New() *Collector {
 	return c
 }
 
+func (c *Collector) SetChannel(channel pushers.Channel) {
+	c.c = channel
+}
+
 // RegisterConnection stores the incoming connection attempt and checks if this IP has been observed before
 func (c *Collector) RegisterConnection(conn net.Conn) *telnet.Session {
 	// TODO(skamoen): Check if an open session already exists
 	// Create a session to store things in
 	s := &telnet.Session{
+		Negotiation: new(telnet.Negotiation),
+		Credentials: new(telnet.Credentials),
+		Interaction: new(telnet.Interaction),
 		StartTime:   time.Now(),
 		RemoteAddr:  conn.RemoteAddr(),
 		LocalAddr:   conn.LocalAddr(),
-		Negotiation: new(telnet.Negotiation),
-		Credentials: new(telnet.Credentials),
 	}
+
+	s.Negotiation.Session = s
+	s.Credentials.Session = s
+	s.Interaction.Session = s
 
 	localHost, _, _ := net.SplitHostPort(s.LocalAddr.String())
 	remoteHost, _, _ := net.SplitHostPort(s.RemoteAddr.String())
@@ -51,8 +60,9 @@ func (c *Collector) RegisterConnection(conn net.Conn) *telnet.Session {
 
 // SubmitNegotiation saves a completed negotiation result
 func (c *Collector) SubmitNegotiation(n *telnet.Negotiation) {
+	// n.Session.Negotiation = n
+	c.LogNegotiation(n)
 
-	c.c
 	// pn := parseCommands(n)
 	// seenBefore := checkNegotiation(c.negotiations, pn)
 	// if seenBefore {

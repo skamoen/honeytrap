@@ -9,7 +9,7 @@ type Interaction struct {
 	commands []string
 }
 
-func (s *telnetService) lowInteraction(conn net.Conn, inputString string) {
+func (s *telnetService) lowInteraction(conn net.Conn, inputString string) string {
 	switch {
 	case inputString == "whoami":
 		conn.Write([]byte("\r\nadmin\r\n"))
@@ -25,5 +25,5 @@ func (s *telnetService) lowInteraction(conn net.Conn, inputString string) {
 
 	conn.Write([]byte("\r\n# "))
 
-	return
+	return inputString
 }
