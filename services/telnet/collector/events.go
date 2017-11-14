@@ -1,52 +1,62 @@
 package collector
 
 import (
-	"github.com/honeytrap/honeytrap/pushers"
+	"github.com/honeytrap/honeytrap/event"
+	"github.com/honeytrap/honeytrap/services/telnet/util"
 )
 
-func (col *Collector) LogMetrics(c pushers.Channel) {
-	// // Convert raw bytes to "readable" int values
-	// bytes := make([]int, len(s.Metrics.Input))
-	// for i, b := range s.Metrics.Input {
-	// 	bytes[i] = int(b)
-	// }
+func (col *Collector) LogNegotiation(n *util.Negotiation) {
+	// Convert raw bytes to "readable" int values
+	bytes := make([]int, len(n.Bytes))
+	for i, b := range n.Bytes {
+		bytes[i] = int(b)
+	}
+	col.c.Send(event.New(
+		event.Service("telnet"),
+		event.Category("session"),
+		event.Type("negotiation"),
+		event.DestinationAddr(n.Session.LocalAddr),
+		event.SourceAddr(n.Session.RemoteAddr),
 
-	// metricsMap := map[string]interface{}{
-	// 	"raw":              s.Raw,
-	// 	"session_start":    s.StartTime,
-	// 	"session_duration": time.Since(s.StartTime) / 1000000,
-	// 	"input_bytes":      bytes,
-	// 	"input_times":      s.Metrics.InputTimes,
-	// 	"usernames":        s.Metrics.Usernames,
-	// 	"passwords":        s.Metrics.Passwords,
-	// 	"entries":          s.Metrics.Entries,
-	// }
-
-	// c.Send(event.New(
-	// 	event.Service("telnet"),
-	// 	event.Category("session"),
-	// 	event.Type("metrics"),
-	// 	event.DestinationAddr(s.LocalAddr),
-	// 	event.SourceAddr(s.RemoteAddr),
-	// 	event.CopyFrom(metricsMap),
-	// ))
+		event.Custom("bytes", bytes),
+		event.Custom("echo", n.ValueEcho),
+		event.Custom("linemode", n.ValueLinemode),
+	))
 }
 
-func (col *Collector) LogNegotiation(c pushers.Channel) {
-	// // Convert raw bytes to "readable" int values
-	// bytes := make([]int, len(s.Negotiation.Bytes))
-	// for i, b := range s.Negotiation.Bytes {
-	// 	bytes[i] = int(b)
-	// }
-	// c.Send(event.New(
-	// 	event.Service("telnet"),
-	// 	event.Category("session"),
-	// 	event.Type("negotiation"),
-	// 	event.DestinationAddr(s.LocalAddr),
-	// 	event.SourceAddr(s.RemoteAddr),
-	// 	event.Custom("bytes", bytes),
-	// 	event.Custom("echo", s.Negotiation.ValueEcho),
-	// 	event.Custom("linemode", s.Negotiation.ValueLinemode),
-	// 	event.Custom("seen", s.Negotiation.seenBefore),
-	// ))
+func (col *Collector) LogCredentials(c *util.Credentials) {
+	// Convert raw bytes to "readable" int values
+	bytes := make([]int, len(c.Input))
+	for i, b := range c.Input {
+		bytes[i] = int(b)
+	}
+
+	col.c.Send(event.New(
+		event.Service("telnet"),
+		event.Category("session"),
+		event.Type("credentials"),
+		event.DestinationAddr(c.Session.LocalAddr),
+		event.SourceAddr(c.Session.RemoteAddr),
+
+		event.Custom("input_bytes", bytes),
+		event.Custom("input_times", c.InputTimes),
+		event.Custom("usernames", c.Usernames),
+		event.Custom("passwords", c.Passwords),
+		event.Custom("entries", c.Entries),
+	))
+}
+
+func (col *Collector) LogInteraction(i *util.Interaction) {
+	// Convert raw bytes to "readable" int values
+	bytes := make([]int, len(i.Input))
+	for j, b := range i.Input {
+		bytes[j] = int(b)
+	}
+	col.c.Send(event.New(
+		event.Service("telnet"),
+		event.Category("session"),
+		event.Type("commands"),
+		event.DestinationAddr(i.Session.LocalAddr),
+		event.SourceAddr(i.Session.RemoteAddr),
+	))
 }
