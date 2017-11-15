@@ -60,8 +60,10 @@ func Telnet(options ...services.ServicerFunc) services.Servicer {
 	for _, o := range options {
 		o(s)
 	}
-	s.allowedCredentials.Store("admin:admin", true)
-	s.allowedCredentials.Store("admin:Win1doW$", true)
+	// Known MIRAI dictionary
+	s.allowedCredentials.Store("admin:atlantis", true)
+	// Known non-MIRAI dictionary
+	s.allowedCredentials.Store("admin:admin1234", true)
 	s.col = collector.New()
 	s.col.SetChannel(s.c)
 	return s
@@ -81,17 +83,14 @@ func (s *telnetService) Handle(conn net.Conn) error {
 	// Declare variables used
 	banner := []byte("\nUser Access Verification\r\nUsername:")
 	timeout := 30 * time.Second
-	// currentInput := make([]byte, 0)
-	// currentInputTimes := make([]int64, 0)
-
-	defer conn.Close()
-	session := s.col.RegisterConnection(conn)
-	// Send the connection to the collector
-	defer s.col.LogCredentials(session.Credentials)
-	defer s.col.LogSession(session)
-
 	// Save the current state, username and password
 	state := [3]string{"username", "", ""}
+
+	// Send the connection to the collector
+	session := s.col.RegisterConnection(conn)
+
+	// When session ends, close the connections and log everything.
+	defer s.closeSession(session, conn)
 
 	// Negotiate linemode and echo. Results will be stored in the session.
 	s.negotiateTelnet(conn, session)
@@ -152,9 +151,10 @@ func (s *telnetService) Handle(conn net.Conn) error {
 				state = s.handleNewline(conn, state, inputString, session)
 			}
 		case 13:
+			// Only used in combination with one of the above, ignore.
 		default:
 			if state[0] != "password" && session.Negotiation.Valid {
-				// Echo the character when in username mode
+				// Echo by default, except if we didn't get a negotiation or when in password mode.
 				if session.Negotiation.ValueEcho {
 					_, err := conn.Write(buf[0:n])
 					if err != nil {
@@ -193,7 +193,7 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputStrin
 		if _, ok := s.allowedCredentials.Load(currentEntry); ok {
 			s.col.LogCredentials(session.Credentials)
 			state[0] = "interaction"
-			conn.Write([]byte("\r\n# "))
+			conn.Write([]byte("\r\n\r\n# "))
 		} else {
 			state[0] = "username"
 			conn.Write([]byte("\r\nWrong password!\r\n\r\nUsername: "))
@@ -207,11 +207,7 @@ func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.N
 	// Write IAC DO LINE MODE IAC WILL ECH
 	conn.Write([]byte{u.IAC, u.Do, u.Linemode, u.IAC, u.Will, u.Echo})
 
-	// Expect IAC WILL LINEMODE
-	// Expect IAC DO ECHO
-
 	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-	// Read 3 bytes per read for commands
 	var buffer [1]byte
 	_, err := conn.Read(buffer[0:])
 	if err != nil {
@@ -280,4 +276,11 @@ func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.N
 		}
 	}
 	return negotiation, nil
+}
+
+func (s *telnetService) closeSession(session *u.Session, conn net.Conn) {
+	session.Duration = int(time.Since(session.StartTime).Nanoseconds() / 1000000)
+	conn.Close()
+	s.col.LogInteraction(session.Interaction)
+	s.col.LogSession(session)
 }
