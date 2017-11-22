@@ -63,9 +63,15 @@ func SSHAuth(options ...services.ServicerFunc) services.Servicer {
 	config := ssh.ServerConfig{
 		ServerVersion: banner,
 		PublicKeyCallback: func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+<<<<<<< HEAD:services/ssh/auth.go
 			srvc.c.Send(event.New(
 				services.EventOptions,
 				event.Category("ssh"),
+=======
+			s.c.Send(event.New(
+				EventOptions,
+				event.Service("ssh-auth"),
+>>>>>>> Change SSH event Category to Service:services/ssh.go
 				event.Type("publickey-authentication"),
 				event.SourceAddr(conn.RemoteAddr()),
 				event.DestinationAddr(conn.LocalAddr()),
@@ -76,9 +82,15 @@ func SSHAuth(options ...services.ServicerFunc) services.Servicer {
 			return nil, errors.New("Unknown key")
 		},
 		PasswordCallback: func(conn ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
+<<<<<<< HEAD:services/ssh/auth.go
 			srvc.c.Send(event.New(
 				services.EventOptions,
 				event.Category("ssh"),
+=======
+			s.c.Send(event.New(
+				EventOptions,
+				event.Service("ssh-auth"),
+>>>>>>> Change SSH event Category to Service:services/ssh.go
 				event.Type("password-authentication"),
 				event.SourceAddr(conn.RemoteAddr()),
 				event.DestinationAddr(conn.LocalAddr()),
