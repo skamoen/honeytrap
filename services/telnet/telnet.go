@@ -64,6 +64,8 @@ func Telnet(options ...services.ServicerFunc) services.Servicer {
 	s.allowedCredentials.Store("admin:atlantis", true)
 	// Known non-MIRAI dictionary
 	s.allowedCredentials.Store("admin:admin1234", true)
+	// Known MASUTA / Centurylink-exploit dictionary
+	s.allowedCredentials.Store("admin:CenturyL1nk", true)
 	s.col = collector.New()
 	s.col.SetChannel(s.c)
 	return s
