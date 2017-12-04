@@ -37,7 +37,6 @@ import (
 	"time"
 
 	logging "github.com/op/go-logging"
-	"golang.org/x/sync/syncmap"
 
 	"github.com/honeytrap/honeytrap/pushers"
 	"github.com/honeytrap/honeytrap/services"
@@ -60,12 +59,6 @@ func Telnet(options ...services.ServicerFunc) services.Servicer {
 	for _, o := range options {
 		o(s)
 	}
-	// Known MIRAI dictionary
-	s.allowedCredentials.Store("admin:atlantis", true)
-	// Known non-MIRAI dictionary
-	s.allowedCredentials.Store("admin:admin1234", true)
-	// Known MASUTA / Centurylink-exploit dictionary
-	s.allowedCredentials.Store("admin:CenturyL1nk", true)
 	s.col = collector.New()
 	s.col.SetChannel(s.c)
 	return s
@@ -73,7 +66,7 @@ func Telnet(options ...services.ServicerFunc) services.Servicer {
 
 type telnetService struct {
 	c                  pushers.Channel
-	allowedCredentials syncmap.Map
+	AllowedCredentials []string `toml:"credentials"`
 	col                *collector.Collector
 }
 
@@ -192,7 +185,7 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputStrin
 		state[1] = ""
 		state[2] = ""
 
-		if _, ok := s.allowedCredentials.Load(currentEntry); ok {
+		if contains(s.AllowedCredentials, currentEntry) {
 			s.col.LogCredentials(session.Credentials)
 			state[0] = "interaction"
 			conn.Write([]byte("\r\n\r\n# "))
@@ -202,6 +195,15 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputStrin
 		}
 	}
 	return state
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.Negotiation, error) {
