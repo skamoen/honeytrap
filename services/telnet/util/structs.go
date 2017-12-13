@@ -14,6 +14,7 @@ type Session struct {
 	RemoteAddr  net.Addr
 	LocalAddr   net.Addr
 	Raw         bool
+	ConConn     *net.Conn
 }
 
 func (s *Session) ToMap() map[string]interface{} {
