@@ -200,7 +200,7 @@ func (c *lxcContainer) clone() error {
 	// http://developerblog.redhat.com/2014/09/30/overview-storage-scalability-docker/
 	// TODO(nl5887): use overlayfs / make it configurable
 	if err = c1.Clone(c.name, lxc.CloneOptions{
-		Backend:  lxc.Aufs,
+		Backend:  lxc.Overlayfs,
 		Snapshot: true,
 		KeepName: true,
 	}); err != nil {
