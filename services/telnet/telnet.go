@@ -38,6 +38,7 @@ import (
 
 	logging "github.com/op/go-logging"
 
+	"github.com/honeytrap/honeytrap/director"
 	"github.com/honeytrap/honeytrap/pushers"
 	"github.com/honeytrap/honeytrap/services"
 
@@ -68,8 +69,12 @@ type telnetService struct {
 	c                  pushers.Channel
 	AllowedCredentials []string `toml:"credentials"`
 	col                *collector.Collector
+	d                  director.Director
 }
 
+func (s *telnetService) SetDirector(d director.Director) {
+	s.d = d
+}
 func (s *telnetService) SetChannel(c pushers.Channel) {
 	s.c = c
 }
@@ -141,7 +146,21 @@ func (s *telnetService) Handle(conn net.Conn) error {
 
 			if state[0] == "interaction" {
 				// Process the command and add it to the list of commands
-				session.Interaction.Commands = append(session.Interaction.Commands, s.lowInteraction(conn, inputString))
+				session.Interaction.Commands = append(session.Interaction.Commands, inputString)
+				if session.ConConn != nil {
+					container := *session.ConConn
+					container.Write([]byte(inputString))
+					container.Write([]byte("\r"))
+					time.Sleep(500 * time.Millisecond)
+					// This is too small for regular commands
+					var conRead [2048]byte
+					container.Read(conRead[0:])
+					// log.Debug("Read %d bytes from container after command: %s", read, conRead)
+					conn.Write(conRead[len(inputString):])
+				} else {
+					log.Error("Session connection is nil")
+				}
+
 			} else {
 				state = s.handleNewline(conn, state, inputString, session)
 			}
@@ -188,7 +207,9 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputStrin
 		if contains(s.AllowedCredentials, currentEntry) {
 			s.col.LogCredentials(session.Credentials)
 			state[0] = "interaction"
-			conn.Write([]byte("\r\n\r\n# "))
+
+			session.ConConn = s.dialContainer(conn)
+
 		} else {
 			state[0] = "username"
 			conn.Write([]byte("\r\nWrong password!\r\n\r\nUsername: "))
@@ -204,6 +225,51 @@ func contains(s []string, e string) bool {
 		}
 	}
 	return false
+}
+
+func (s *telnetService) dialContainer(conn net.Conn) *net.Conn {
+	cConn, err := s.d.Dial(conn)
+	if err != nil {
+		log.Error("Error dialing container", err.Error())
+	}
+
+	// Handle negotiation
+	var conRead [512]byte
+	cConn.Read(conRead[0:])
+	cConn.Write([]byte{0xff, 0xfb, 0x18, 0xff, 0xfb, 0x20, 0xff, 0xfb,
+		0x23, 0xff, 0xfb, 0x27})
+	cConn.Read(conRead[0:])
+	cConn.Write([]byte{0xff, 0xfa, 0x20, 0x00, 0x33, 0x38, 0x34, 0x30,
+		0x30, 0x2c, 0x33, 0x38, 0x34, 0x30, 0x30, 0xff,
+		0xf0, 0xff, 0xfa, 0x23, 0x00, 0x6e, 0x79, 0x78,
+		0x3a, 0x30, 0xff, 0xf0, 0xff, 0xfa, 0x27, 0x00,
+		0x00, 0x44, 0x49, 0x53, 0x50, 0x4c, 0x41, 0x59,
+		0x01, 0x6e, 0x79, 0x78, 0x3a, 0x30, 0xff, 0xf0,
+		0xff, 0xfa, 0x18, 0x00, 0x58, 0x54, 0x45, 0x52,
+		0x4d, 0x2d, 0x32, 0x35, 0x36, 0x43, 0x4f, 0x4c,
+		0x4f, 0x52, 0xff, 0xf0})
+	cConn.Read(conRead[0:])
+	cConn.Write([]byte{0xff, 0xfd, 0x03, 0xff, 0xfc, 0x01, 0xff, 0xfb,
+		0x1f, 0xff, 0xfa, 0x1f, 0x00, 0xbe, 0x00, 0x30,
+		0xff, 0xf0, 0xff, 0xfd, 0x05, 0xff, 0xfb, 0x21})
+	cConn.Read(conRead[0:])
+	cConn.Write([]byte{0xff, 0xfe, 0x01})
+	time.Sleep(50 * time.Millisecond)
+
+	// Read username prompt
+	cConn.Read(conRead[0:])
+	cConn.Write([]byte("admin\r"))
+	time.Sleep(50 * time.Millisecond)
+	// Read password prompt
+	cConn.Read(conRead[0:])
+	cConn.Write([]byte("honey\r"))
+	time.Sleep(50 * time.Millisecond)
+	// Read MOTD
+	cConn.Read(conRead[0:])
+
+	log.Info("Authenticated to container")
+	conn.Write(conRead[0:])
+	return &cConn
 }
 
 func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.Negotiation, error) {
