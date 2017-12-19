@@ -153,7 +153,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 					container.Write([]byte("\r"))
 					time.Sleep(500 * time.Millisecond)
 					// This is too small for regular commands
-					var conRead [2048]byte
+					var conRead [20480]byte
 					container.Read(conRead[0:])
 					// log.Debug("Read %d bytes from container after command: %s", read, conRead)
 					conn.Write(conRead[len(inputString):])
@@ -232,7 +232,6 @@ func (s *telnetService) dialContainer(conn net.Conn) *net.Conn {
 	if err != nil {
 		log.Error("Error dialing container", err.Error())
 	}
-
 	// Handle negotiation
 	var conRead [512]byte
 	cConn.Read(conRead[0:])
@@ -263,12 +262,14 @@ func (s *telnetService) dialContainer(conn net.Conn) *net.Conn {
 	// Read password prompt
 	cConn.Read(conRead[0:])
 	cConn.Write([]byte("honey\r"))
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 	// Read MOTD
-	cConn.Read(conRead[0:])
+	var prompt [2048]byte
+	cConn.Read(prompt[0:])
 
 	log.Info("Authenticated to container")
-	conn.Write(conRead[0:])
+	log.Debugf("prompt: %s", prompt[0:])
+	conn.Write(prompt[0:])
 	return &cConn
 }
 
