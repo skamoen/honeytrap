@@ -153,10 +153,12 @@ func (sl *agentListener) serv(c *conn2) {
 		switch v := o.(type) {
 		case *Hello:
 			ac := &agentConnection{
-				Laddr: v.Laddr,
-				Raddr: v.Raddr,
-				in:    make(chan []byte),
-				out:   out,
+				Laddr:        v.Laddr,
+				Raddr:        v.Raddr,
+				agentAddress: c.RemoteAddr(),
+
+				in:  make(chan []byte),
+				out: out,
 			}
 
 			conns.Add(ac)
