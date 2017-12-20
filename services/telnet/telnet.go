@@ -39,6 +39,7 @@ import (
 	logging "github.com/op/go-logging"
 
 	"github.com/honeytrap/honeytrap/director"
+	"github.com/honeytrap/honeytrap/listener/agent"
 	"github.com/honeytrap/honeytrap/pushers"
 	"github.com/honeytrap/honeytrap/services"
 
@@ -80,6 +81,11 @@ func (s *telnetService) SetChannel(c pushers.Channel) {
 }
 
 func (s *telnetService) Handle(conn net.Conn) error {
+
+	if aa, ok := conn.(agent.AgentAddresser); ok {
+		log.Info("Connection is AgentAdrresser", aa.AgentAddress())
+		// _ = aa.AgentAddress()
+	}
 	// Declare variables used
 	banner := []byte("\nUser Access Verification\r\nUsername:")
 	timeout := 30 * time.Second
