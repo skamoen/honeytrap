@@ -31,6 +31,7 @@
 package telnet
 
 import (
+	"bufio"
 	"bytes"
 	"net"
 	"strings"
@@ -157,12 +158,24 @@ func (s *telnetService) Handle(conn net.Conn) error {
 					container := *session.ConConn
 					container.Write([]byte(inputString))
 					container.Write([]byte("\r"))
-					time.Sleep(500 * time.Millisecond)
-					// This is too small for regular commands
-					var conRead [20480]byte
-					container.Read(conRead[0:])
+
+					scanner := bufio.NewScanner(container)
+				read:
+					for {
+						if ok := scanner.Scan(); !ok {
+							break
+						}
+						output := scanner.Text()
+						conn.Write([]byte(output))
+						if output != "/#\n" {
+							break read
+						}
+						// fmt.Println(scanner.Text())
+					}
+
+					// container.Read(conRead[0:])
 					// log.Debug("Read %d bytes from container after command: %s", read, conRead)
-					conn.Write(conRead[len(inputString):])
+					// conn.Write(conRead[len(inputString):])
 				} else {
 					log.Error("Session connection is nil")
 				}
