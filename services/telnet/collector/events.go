@@ -12,6 +12,7 @@ func (c *Collector) LogNegotiation(n *util.Negotiation) {
 		event.Type("negotiation"),
 		event.DestinationAddr(n.Session.LocalAddr),
 		event.SourceAddr(n.Session.RemoteAddr),
+		event.Custom("agent-ip", n.Session.AgentAddr),
 		event.CopyFrom(n.ToMap()),
 	))
 }
@@ -23,6 +24,7 @@ func (c *Collector) LogCredentials(cr *util.Credentials) {
 		event.Type("credentials"),
 		event.DestinationAddr(cr.Session.LocalAddr),
 		event.SourceAddr(cr.Session.RemoteAddr),
+		event.Custom("agent-ip", cr.Session.AgentAddr),
 		event.CopyFrom(cr.ToMap()),
 	))
 }
@@ -34,6 +36,7 @@ func (c *Collector) LogInteraction(i *util.Interaction) {
 		event.Type("commands"),
 		event.DestinationAddr(i.Session.LocalAddr),
 		event.SourceAddr(i.Session.RemoteAddr),
+		event.Custom("agent-ip", i.Session.AgentAddr),
 		event.CopyFrom(i.ToMap()),
 	))
 }
@@ -45,6 +48,7 @@ func (c *Collector) LogSession(s *util.Session) {
 		event.Type("session"),
 		event.DestinationAddr(s.LocalAddr),
 		event.SourceAddr(s.RemoteAddr),
+		event.Custom("agent-ip", s.AgentAddr),
 		event.CopyFrom(s.ToMap()),
 	))
 }
