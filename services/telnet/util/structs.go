@@ -13,6 +13,7 @@ type Session struct {
 	Duration    int
 	RemoteAddr  net.Addr
 	LocalAddr   net.Addr
+	AgentAddr   net.Addr
 	Raw         bool
 	ConConn     *net.Conn
 }
