@@ -154,28 +154,38 @@ func (s *telnetService) Handle(conn net.Conn) error {
 			if state[0] == "interaction" {
 				// Process the command and add it to the list of commands
 				session.Interaction.Commands = append(session.Interaction.Commands, inputString)
-				if session.ConConn != nil {
-					container := *session.ConConn
-					container.Write([]byte(inputString))
-					container.Write([]byte("\r"))
+				if session.TelnetContainer != nil {
+					ccon := *session.TelnetContainer.ContainerConnection
 
-					scanner := bufio.NewScanner(container)
-				read:
+					go func(ccon net.Conn, rc chan byte) {
+						reader := bufio.NewReader(ccon)
+						for {
+							ccon.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
+							b, readErr := reader.ReadByte()
+							if readErr != nil {
+								return
+							}
+							rc <- b
+						}
+					}(ccon, session.TelnetContainer.ReplyChannel)
+
+					ccon.Write([]byte(inputString))
+					ccon.Write([]byte("\r"))
+
+					count := 0
+				replyloop:
 					for {
-						if ok := scanner.Scan(); !ok {
-							break
+						select {
+						case reply := <-session.TelnetContainer.ReplyChannel:
+							count++
+							// Hack to disable ECHO as telnetd won't accept negotation
+							if count > len(inputString) {
+								conn.Write([]byte{reply})
+							}
+						case <-time.After(500 * time.Millisecond):
+							break replyloop
 						}
-						output := scanner.Text()
-						conn.Write([]byte(output))
-						if output != "/#\n" {
-							break read
-						}
-						// fmt.Println(scanner.Text())
 					}
-
-					// container.Read(conRead[0:])
-					// log.Debug("Read %d bytes from container after command: %s", read, conRead)
-					// conn.Write(conRead[len(inputString):])
 				} else {
 					log.Error("Session connection is nil")
 				}
@@ -227,8 +237,12 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputStrin
 			s.col.LogCredentials(session.Credentials)
 			state[0] = "interaction"
 
-			session.ConConn = s.dialContainer(conn)
-
+			telnetContainer := &u.TelnetContainer{
+				ContainerConnection: s.dialContainer(conn),
+				RemoteConnection:    &conn,
+				ReplyChannel:        make(chan byte),
+			}
+			session.TelnetContainer = telnetContainer
 		} else {
 			state[0] = "username"
 			conn.Write([]byte("\r\nWrong password!\r\n\r\nUsername: "))
@@ -267,11 +281,10 @@ func (s *telnetService) dialContainer(conn net.Conn) *net.Conn {
 		0x4d, 0x2d, 0x32, 0x35, 0x36, 0x43, 0x4f, 0x4c,
 		0x4f, 0x52, 0xff, 0xf0})
 	cConn.Read(conRead[0:])
-	cConn.Write([]byte{0xff, 0xfd, 0x03, 0xff, 0xfc, 0x01, 0xff, 0xfb,
+	cConn.Write([]byte{0xff, 0xfd, 0x03, u.IAC, u.Wont, u.Echo, 0xff, 0xfb,
 		0x1f, 0xff, 0xfa, 0x1f, 0x00, 0xbe, 0x00, 0x30,
 		0xff, 0xf0, 0xff, 0xfd, 0x05, 0xff, 0xfb, 0x21})
 	cConn.Read(conRead[0:])
-	cConn.Write([]byte{0xff, 0xfe, 0x01})
 	time.Sleep(50 * time.Millisecond)
 
 	// Read username prompt
