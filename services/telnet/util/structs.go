@@ -6,16 +6,16 @@ import (
 )
 
 type Session struct {
-	Negotiation *Negotiation
-	Credentials *Credentials
-	Interaction *Interaction
-	StartTime   time.Time
-	Duration    int
-	RemoteAddr  net.Addr
-	LocalAddr   net.Addr
-	AgentAddr   net.Addr
-	Raw         bool
-	ConConn     *net.Conn
+	Negotiation     *Negotiation
+	Credentials     *Credentials
+	Interaction     *Interaction
+	TelnetContainer *TelnetContainer
+	StartTime       time.Time
+	Duration        int
+	RemoteAddr      net.Addr
+	LocalAddr       net.Addr
+	AgentAddr       net.Addr
+	Raw             bool
 }
 
 func (s *Session) ToMap() map[string]interface{} {
@@ -27,6 +27,12 @@ func (s *Session) ToMap() map[string]interface{} {
 		"duration":    s.Duration,
 		"raw":         s.Raw,
 	}
+}
+
+type TelnetContainer struct {
+	ContainerConnection *net.Conn
+	RemoteConnection    *net.Conn
+	ReplyChannel        chan byte
 }
 
 // Negotiation is the Telnet Negotiation data from the beginning of a session
