@@ -300,8 +300,7 @@ func (s *telnetService) dialContainer(conn net.Conn) *net.Conn {
 	var prompt [2048]byte
 	cConn.Read(prompt[0:])
 
-	log.Info("Authenticated to container")
-	log.Debugf("prompt: %s", prompt[0:])
+	log.Debug("Authenticated to container")
 	conn.Write(prompt[0:])
 	return &cConn
 }
