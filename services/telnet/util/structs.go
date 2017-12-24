@@ -74,7 +74,7 @@ type Interaction struct {
 	Session    *Session
 	Input      []byte
 	InputTimes []int64
-	Commands   []string
+	Commands   [][]string
 }
 
 func (i *Interaction) ToMap() map[string]interface{} {
