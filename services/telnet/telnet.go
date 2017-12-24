@@ -82,11 +82,6 @@ func (s *telnetService) SetChannel(c pushers.Channel) {
 }
 
 func (s *telnetService) Handle(conn net.Conn) error {
-
-	if aa, ok := conn.(agent.AgentAddresser); ok {
-		log.Info("Connection is AgentAdrresser", aa.AgentAddress())
-		// _ = aa.AgentAddress()
-	}
 	// Declare variables used
 	banner := []byte("\nUser Access Verification\r\nUsername:")
 	timeout := 30 * time.Second
@@ -95,6 +90,9 @@ func (s *telnetService) Handle(conn net.Conn) error {
 
 	// Send the connection to the collector
 	session := s.col.RegisterConnection(conn)
+	if aa, ok := conn.(agent.AgentAddresser); ok {
+		session.AgentAddr = aa.AgentAddress()
+	}
 
 	// When session ends, close the connections and log everything.
 	defer s.closeSession(session, conn)
@@ -153,7 +151,6 @@ func (s *telnetService) Handle(conn net.Conn) error {
 
 			if state[0] == "interaction" {
 				// Process the command and add it to the list of commands
-				session.Interaction.Commands = append(session.Interaction.Commands, inputString)
 				if session.TelnetContainer != nil {
 					ccon := *session.TelnetContainer.ContainerConnection
 
@@ -173,6 +170,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 					ccon.Write([]byte("\r"))
 
 					count := 0
+					buffer := make([]byte, 8)
 				replyloop:
 					for {
 						select {
@@ -181,11 +179,14 @@ func (s *telnetService) Handle(conn net.Conn) error {
 							// Hack to disable ECHO as telnetd won't accept negotation
 							if count > len(inputString) {
 								conn.Write([]byte{reply})
+								buffer = append(buffer, reply)
 							}
 						case <-time.After(500 * time.Millisecond):
 							break replyloop
 						}
 					}
+					session.Interaction.Commands = append(session.Interaction.Commands, []string{inputString, string(buffer)})
+					buffer = make([]byte, 8)
 				} else {
 					log.Error("Session connection is nil")
 				}
