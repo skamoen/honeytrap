@@ -170,7 +170,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 					ccon.Write([]byte("\r"))
 
 					count := 0
-					buffer := make([]byte, 8)
+					var buffer []byte
 				replyloop:
 					for {
 						select {
