@@ -180,6 +180,15 @@ func DestinationAddr(addr net.Addr) Option {
 	}
 }
 
+// AgentAddr returns an option for setting the destination-ip value.
+func AgentAddr(addr net.Addr) Option {
+	return func(m Event) {
+		if ta, ok := addr.(*net.TCPAddr); ok {
+			m.Store("agent-ip", ta.IP.String())
+		}
+	}
+}
+
 // SourceIP returns an option for setting the source-ip value.
 func SourceIP(ip net.IP) Option {
 	return func(m Event) {
