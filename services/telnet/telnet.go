@@ -238,17 +238,15 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputStrin
 		state[2] = ""
 
 		// Only move to interaction mode if LXC is enabled
-		if s.d != nil {
-			if contains(s.AllowedCredentials, currentEntry) {
-				state[0] = "interaction"
+		if s.d != nil && contains(s.AllowedCredentials, currentEntry) {
+			state[0] = "interaction"
 
-				telnetContainer := &u.TelnetContainer{
-					ContainerConnection: s.dialContainer(conn),
-					RemoteConnection:    &conn,
-					ReplyChannel:        make(chan byte),
-				}
-				session.TelnetContainer = telnetContainer
+			telnetContainer := &u.TelnetContainer{
+				ContainerConnection: s.dialContainer(conn),
+				RemoteConnection:    &conn,
+				ReplyChannel:        make(chan byte),
 			}
+			session.TelnetContainer = telnetContainer
 		} else {
 			state[0] = "username"
 			conn.Write([]byte("\r\nWrong password!\r\n\r\nUsername: "))
