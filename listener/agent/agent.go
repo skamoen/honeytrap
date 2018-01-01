@@ -156,6 +156,7 @@ func (sl *agentListener) serv(c *conn2) {
 				Laddr:        v.Laddr,
 				Raddr:        v.Raddr,
 				agentAddress: c.RemoteAddr(),
+				agentToken: v.Token,
 
 				in:  make(chan []byte),
 				out: out,
