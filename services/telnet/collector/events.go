@@ -12,7 +12,8 @@ func (c *Collector) LogNegotiation(n *util.Negotiation) {
 		event.Type("negotiation"),
 		event.DestinationAddr(n.Session.LocalAddr),
 		event.SourceAddr(n.Session.RemoteAddr),
-		event.AgentAddr(n.Session.AgentAddr),
+		event.AgentAddr(n.Session.AgentAddr.AgentAddress()),
+		event.AgentToken(n.Session.AgentAddr.AgentToken()),
 		event.CopyFrom(n.ToMap()),
 	))
 }
@@ -24,7 +25,8 @@ func (c *Collector) LogCredentials(cr *util.Credentials) {
 		event.Type("credentials"),
 		event.DestinationAddr(cr.Session.LocalAddr),
 		event.SourceAddr(cr.Session.RemoteAddr),
-		event.AgentAddr(cr.Session.AgentAddr),
+		event.AgentAddr(cr.Session.AgentAddr.AgentAddress()),
+		event.AgentToken(cr.Session.AgentAddr.AgentToken()),
 		event.CopyFrom(cr.ToMap()),
 	))
 }
@@ -35,8 +37,8 @@ func (c *Collector) LogInteraction(i *util.Interaction) {
 		event.Service("telnet"),
 		event.Type("commands"),
 		event.DestinationAddr(i.Session.LocalAddr),
-		event.SourceAddr(i.Session.RemoteAddr),
-		event.AgentAddr(i.Session.AgentAddr),
+		event.AgentAddr(i.Session.AgentAddr.AgentAddress()),
+		event.AgentToken(i.Session.AgentAddr.AgentToken()),
 		event.CopyFrom(i.ToMap()),
 	))
 }
@@ -47,8 +49,8 @@ func (c *Collector) LogSession(s *util.Session) {
 		event.Service("telnet"),
 		event.Type("session"),
 		event.DestinationAddr(s.LocalAddr),
-		event.SourceAddr(s.RemoteAddr),
-		event.AgentAddr(s.AgentAddr),
+		event.AgentAddr(s.AgentAddr.AgentAddress()),
+		event.AgentToken(s.AgentAddr.AgentToken()),
 		event.CopyFrom(s.ToMap()),
 	))
 }
