@@ -4,6 +4,7 @@ import (
 	"net"
 	"time"
 	"github.com/honeytrap/honeytrap/listener/agent"
+	"github.com/honeytrap/honeytrap/event"
 )
 
 type Session struct {
@@ -28,6 +29,22 @@ func (s *Session) ToMap() map[string]interface{} {
 		"duration":    s.Duration,
 		"raw":         s.Raw,
 	}
+}
+
+func (s *Session) EventOptions() event.Option {
+	o := event.NewWith(
+		event.Service("telnet"),
+		event.DestinationAddr(s.LocalAddr),
+		event.SourceAddr(s.RemoteAddr),
+	)
+
+	if s.AgentAddr != nil {
+		o = event.NewWith(o,
+			event.AgentAddr(s.AgentAddr.AgentAddress()),
+			event.AgentToken(s.AgentAddr.AgentToken()),
+		)
+	}
+	return o
 }
 
 type TelnetContainer struct {

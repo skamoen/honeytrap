@@ -8,6 +8,7 @@ import (
 	"github.com/honeytrap/honeytrap/pushers"
 	telnet "github.com/honeytrap/honeytrap/services/telnet/util"
 	"golang.org/x/sync/syncmap"
+	"github.com/honeytrap/honeytrap/listener/agent"
 )
 
 type Collector struct {
@@ -31,6 +32,7 @@ func (c *Collector) SetChannel(channel pushers.Channel) {
 // RegisterConnection stores the incoming connection attempt and checks if this IP has been observed before
 func (c *Collector) RegisterConnection(conn net.Conn) *telnet.Session {
 	// TODO(skamoen): Check if an open session already exists
+
 	// Create a session to store things in
 	s := &telnet.Session{
 		Negotiation: new(telnet.Negotiation),
@@ -39,6 +41,10 @@ func (c *Collector) RegisterConnection(conn net.Conn) *telnet.Session {
 		StartTime:   time.Now(),
 		RemoteAddr:  conn.RemoteAddr(),
 		LocalAddr:   conn.LocalAddr(),
+	}
+
+	if aa, ok := conn.(agent.AgentAddresser); ok {
+		s.AgentAddr = aa
 	}
 
 	s.Negotiation.Session = s
