@@ -40,13 +40,13 @@ import (
 	"github.com/op/go-logging"
 
 	"github.com/honeytrap/honeytrap/director"
-	"github.com/honeytrap/honeytrap/listener/agent"
 	"github.com/honeytrap/honeytrap/pushers"
 	"github.com/honeytrap/honeytrap/services"
 
 	"github.com/honeytrap/honeytrap/services/telnet/collector"
 	u "github.com/honeytrap/honeytrap/services/telnet/util"
 	// Lazy import for util structs
+	"io"
 )
 
 var log = logging.MustGetLogger("services/telnet")
@@ -89,9 +89,6 @@ func (s *telnetService) Handle(conn net.Conn) error {
 
 	// Send the connection to the collector
 	session := s.col.RegisterConnection(conn)
-	if aa, ok := conn.(agent.AgentAddresser); ok {
-		session.AgentAddr = aa
-	}
 
 	// When session ends, close the connections and log everything.
 	defer s.closeSession(session, conn)
@@ -113,7 +110,11 @@ func (s *telnetService) Handle(conn net.Conn) error {
 
 		n, err := conn.Read(buf[0:])
 		if err != nil {
-			log.Errorf("Error occurred reading connection: %s", err.Error())
+			if err == io.EOF {
+				log.Infof("Client closed connection: %s", err.Error())
+			} else {
+				log.Errorf("Error occurred reading connection: %s", err.Error())
+			}
 			return nil
 		}
 
