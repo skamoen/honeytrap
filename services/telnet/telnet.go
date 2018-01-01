@@ -33,6 +33,8 @@ package telnet
 import (
 	"bufio"
 	"bytes"
+	// Lazy import for util structs
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -45,8 +47,6 @@ import (
 
 	"github.com/honeytrap/honeytrap/services/telnet/collector"
 	u "github.com/honeytrap/honeytrap/services/telnet/util"
-	// Lazy import for util structs
-	"io"
 )
 
 var log = logging.MustGetLogger("services/telnet")
@@ -100,7 +100,12 @@ func (s *telnetService) Handle(conn net.Conn) error {
 
 	// Send the banner to the remote host
 	log.Debugf("Sending banner %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
-	conn.Write(banner)
+	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	_, err := conn.Write(banner)
+	if err != nil {
+		log.Errorf("Error writing banner: %s : %s => %s", err.Error(), conn.RemoteAddr().String(), conn.LocalAddr().String())
+		return err
+	}
 
 	// Read one byte at a time
 	var buf [1]byte
@@ -313,12 +318,16 @@ func (s *telnetService) dialContainer(conn net.Conn) *net.Conn {
 
 func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.Negotiation, error) {
 	negotiation := session.Negotiation
-	// Write IAC DO LINE MODE IAC WILL ECH
-	conn.Write([]byte{u.IAC, u.Do, u.Linemode, u.IAC, u.Will, u.Echo})
+	conn.SetDeadline(time.Now().Add(10 * time.Second))
 
-	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	// Write IAC DO LINE MODE IAC WILL ECH
+	_, err := conn.Write([]byte{u.IAC, u.Do, u.Linemode, u.IAC, u.Will, u.Echo})
+	if err != nil {
+		log.Errorf("Error writing initial negotiation: %s => %s: %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
+	}
+
 	var buffer [1]byte
-	_, err := conn.Read(buffer[0:])
+	_, err = conn.Read(buffer[0:])
 	if err != nil {
 		log.Errorf("Error reading connection on negotiate init: %s => %s: %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
 		negotiation.Valid = false
@@ -333,7 +342,7 @@ func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.N
 		validOption := false
 
 		for {
-			conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+			conn.SetDeadline(time.Now().Add(10 * time.Second))
 			// Read next byte, expect option
 			_, err := conn.Read(buffer[0:])
 			if err != nil {
