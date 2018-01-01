@@ -91,13 +91,15 @@ func (s *telnetService) Handle(conn net.Conn) error {
 	session := s.col.RegisterConnection(conn)
 
 	// When session ends, close the connections and log everything.
-	defer s.closeSession(session, conn)
+	defer s.logSession(session)
 
 	// Negotiate linemode and echo. Results will be stored in the session.
+	log.Debugf("Starting negotiation: %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
 	s.negotiateTelnet(conn, session)
 	s.col.SubmitNegotiation(session.Negotiation)
 
 	// Send the banner to the remote host
+	log.Debugf("Sending banner %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
 	conn.Write(banner)
 
 	// Read one byte at a time
@@ -111,9 +113,9 @@ func (s *telnetService) Handle(conn net.Conn) error {
 		n, err := conn.Read(buf[0:])
 		if err != nil {
 			if err == io.EOF {
-				log.Infof("Client closed connection: %s", err.Error())
+				log.Infof("Client closed connection: %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
 			} else {
-				log.Errorf("Error occurred reading connection: %s", err.Error())
+				log.Errorf("Error occurred reading connection: %s => %s:  %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
 			}
 			return nil
 		}
@@ -166,6 +168,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 						}
 					}(ccon, session.TelnetContainer.ReplyChannel)
 
+					log.Debugf("Sending command: %s :%s => %s", inputString, conn.RemoteAddr().String(), conn.LocalAddr().String())
 					ccon.Write([]byte(inputString))
 					ccon.Write([]byte("\r"))
 
@@ -237,7 +240,6 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputStrin
 		// Only move to interaction mode if LXC is enabled
 		if s.d != nil {
 			if contains(s.AllowedCredentials, currentEntry) {
-				s.col.LogCredentials(session.Credentials)
 				state[0] = "interaction"
 
 				telnetContainer := &u.TelnetContainer{
@@ -320,7 +322,7 @@ func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.N
 	var buffer [1]byte
 	_, err := conn.Read(buffer[0:])
 	if err != nil {
-		log.Errorf("Error reading connection on negotiate init: %s", err.Error())
+		log.Errorf("Error reading connection on negotiate init: %s => %s: %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
 		negotiation.Valid = false
 		return negotiation, err
 	}
@@ -337,7 +339,7 @@ func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.N
 			// Read next byte, expect option
 			_, err := conn.Read(buffer[0:])
 			if err != nil {
-				log.Errorf("Error reading connection: %s", err.Error())
+				log.Errorf("Error reading connection: %s : %s => %s", err.Error(), conn.RemoteAddr().String(), conn.LocalAddr().String())
 				return negotiation, err
 			}
 			negotiation.Bytes = append(negotiation.Bytes, buffer[0])
@@ -389,9 +391,9 @@ func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.N
 	return negotiation, nil
 }
 
-func (s *telnetService) closeSession(session *u.Session, conn net.Conn) {
+func (s *telnetService) logSession(session *u.Session) {
 	session.Duration = int(time.Since(session.StartTime).Nanoseconds() / 1000000)
-	conn.Close()
+	s.col.LogCredentials(session.Credentials)
 	s.col.LogInteraction(session.Interaction)
 	s.col.LogSession(session)
 }
