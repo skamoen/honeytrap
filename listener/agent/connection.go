@@ -45,6 +45,7 @@ type agentConnection struct {
 	Laddr        net.Addr
 	Raddr        net.Addr
 	agentAddress net.Addr
+	agentToken string
 
 	buff   []byte
 	closed bool
@@ -56,15 +57,20 @@ type agentConnection struct {
 
 	out chan interface{}
 
-	m sync.Mutex
+	m          sync.Mutex
 }
 
 type AgentAddresser interface {
 	AgentAddress() net.Addr
+	AgentToken() string
 }
 
 func (ac *agentConnection) AgentAddress() net.Addr {
 	return ac.agentAddress
+}
+
+func (ac *agentConnection) AgentToken() string {
+	return ac.agentToken
 }
 
 func (dc *agentConnection) Read(b []byte) (int, error) {

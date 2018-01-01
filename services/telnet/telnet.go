@@ -37,7 +37,7 @@ import (
 	"strings"
 	"time"
 
-	logging "github.com/op/go-logging"
+	"github.com/op/go-logging"
 
 	"github.com/honeytrap/honeytrap/director"
 	"github.com/honeytrap/honeytrap/listener/agent"
@@ -50,7 +50,6 @@ import (
 )
 
 var log = logging.MustGetLogger("services/telnet")
-var ID = 0
 
 var (
 	_ = services.Register("telnet", Telnet)
@@ -91,7 +90,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 	// Send the connection to the collector
 	session := s.col.RegisterConnection(conn)
 	if aa, ok := conn.(agent.AgentAddresser); ok {
-		session.AgentAddr = aa.AgentAddress()
+		session.AgentAddr = aa
 	}
 
 	// When session ends, close the connections and log everything.
@@ -114,7 +113,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 
 		n, err := conn.Read(buf[0:])
 		if err != nil {
-			// Read error, most likely time-out
+			log.Errorf("Error occurred reading connection: %s", err.Error())
 			return nil
 		}
 
@@ -234,16 +233,19 @@ func (s *telnetService) handleNewline(conn net.Conn, state [3]string, inputStrin
 		state[1] = ""
 		state[2] = ""
 
-		if contains(s.AllowedCredentials, currentEntry) {
-			s.col.LogCredentials(session.Credentials)
-			state[0] = "interaction"
+		// Only move to interaction mode if LXC is enabled
+		if s.d != nil {
+			if contains(s.AllowedCredentials, currentEntry) {
+				s.col.LogCredentials(session.Credentials)
+				state[0] = "interaction"
 
-			telnetContainer := &u.TelnetContainer{
-				ContainerConnection: s.dialContainer(conn),
-				RemoteConnection:    &conn,
-				ReplyChannel:        make(chan byte),
+				telnetContainer := &u.TelnetContainer{
+					ContainerConnection: s.dialContainer(conn),
+					RemoteConnection:    &conn,
+					ReplyChannel:        make(chan byte),
+				}
+				session.TelnetContainer = telnetContainer
 			}
-			session.TelnetContainer = telnetContainer
 		} else {
 			state[0] = "username"
 			conn.Write([]byte("\r\nWrong password!\r\n\r\nUsername: "))
@@ -264,11 +266,14 @@ func contains(s []string, e string) bool {
 func (s *telnetService) dialContainer(conn net.Conn) *net.Conn {
 	cConn, err := s.d.Dial(conn)
 	if err != nil {
-		log.Error("Error dialing container", err.Error())
+		log.Errorf("Error dialing container: %s", err.Error())
 	}
 	// Handle negotiation
 	var conRead [512]byte
-	cConn.Read(conRead[0:])
+	_, err = cConn.Read(conRead[0:])
+	if err != nil {
+		log.Errorf("Error reading from container: %s", err.Error())
+	}
 	cConn.Write([]byte{0xff, 0xfb, 0x18, 0xff, 0xfb, 0x20, 0xff, 0xfb,
 		0x23, 0xff, 0xfb, 0x27})
 	cConn.Read(conRead[0:])
@@ -314,6 +319,7 @@ func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.N
 	var buffer [1]byte
 	_, err := conn.Read(buffer[0:])
 	if err != nil {
+		log.Errorf("Error reading connection on negotiate init: %s", err.Error())
 		negotiation.Valid = false
 		return negotiation, err
 	}
@@ -330,6 +336,7 @@ func (s *telnetService) negotiateTelnet(conn net.Conn, session *u.Session) (*u.N
 			// Read next byte, expect option
 			_, err := conn.Read(buffer[0:])
 			if err != nil {
+				log.Errorf("Error reading connection: %s", err.Error())
 				return negotiation, err
 			}
 			negotiation.Bytes = append(negotiation.Bytes, buffer[0])

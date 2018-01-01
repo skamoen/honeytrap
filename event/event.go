@@ -189,6 +189,14 @@ func AgentAddr(addr net.Addr) Option {
 	}
 }
 
+func AgentToken(token string) Option {
+	return func(m Event) {
+		if token != "" {
+			m.Store("agent-token", token)
+		}
+	}
+}
+
 // SourceIP returns an option for setting the source-ip value.
 func SourceIP(ip net.IP) Option {
 	return func(m Event) {
