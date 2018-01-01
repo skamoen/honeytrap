@@ -3,6 +3,7 @@ package util
 import (
 	"net"
 	"time"
+	"github.com/honeytrap/honeytrap/listener/agent"
 )
 
 type Session struct {
@@ -14,7 +15,7 @@ type Session struct {
 	Duration        int
 	RemoteAddr      net.Addr
 	LocalAddr       net.Addr
-	AgentAddr       net.Addr
+	AgentAddr       agent.AgentAddresser
 	Raw             bool
 }
 
