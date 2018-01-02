@@ -1,6 +1,7 @@
 package telnet
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"io"
@@ -25,11 +26,11 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 
 	// Process the command and add it to the list of commands
 	if telnetContainer != nil {
-		defer telnetContainer.ContainerConnection.Close()
 
 		// Create a context for closing the following goroutines
 		rwctx, rwcancel := context.WithCancel(context.Background())
 		go func() {
+			defer telnetContainer.ContainerConnection.Close()
 			// Proxy all incoming bytes to the container
 			for {
 				select {
@@ -69,24 +70,45 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 
 		buf := make([]byte, 32*1024)
 
+	readloop:
 		for {
-			nr, er := telnetContainer.ContainerConnection.Read(buf)
-			if er != nil {
-				rwcancel()
-				log.Errorf("Error reading from container: %s", er.Error())
-				break
-			} else if nr == 0 {
-				continue
+			select {
+			case <-rwctx.Done():
+				break readloop
+			default:
+				nr, er := telnetContainer.ContainerConnection.Read(buf)
+				if er != nil {
+					rwcancel()
+					break
+				} else if nr == 0 {
+					continue
+				}
+				conn.Write(buf[:nr])
 			}
-			conn.Write(buf[:nr])
 		}
 	} else {
 		log.Error("Session connection is nil")
 	}
+	scanner := bufio.NewScanner(bytes.NewReader(interaction.Input))
+	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		// Find the index of the input of a \r\u0000
+		if i := strings.Index(string(data), "\r\u0000"); i >= 0 {
+			return i + 2, data[0:i], nil
+		}
+		// If at end of file with data return the data
+		if atEOF {
+			return len(data), nil, nil
+		}
+		return
 
-	// TODO(skamoen): Parse interaction input!
+	})
+	for scanner.Scan() {
+		interaction.Commands = append(interaction.Commands, scanner.Text())
+	}
+	if scanner.Err() != nil {
+		log.Debugf("Error parsing commands: %s ", scanner.Err().Error())
+	}
 	return interaction, nil
-
 }
 
 func (s *telnetService) lowInteraction(conn net.Conn, negotiation *u.Negotiation) (*u.Interaction, error) {
@@ -137,7 +159,7 @@ func (s *telnetService) lowInteraction(conn net.Conn, negotiation *u.Negotiation
 			conn.Write([]byte(output))
 			conn.Write([]byte("\r\n# "))
 		case 13:
-		// Only used in combination with one of the above, ignore.
+			// Only used in combination with one of the above, ignore.
 		default:
 			if negotiation.Valid {
 				// Echo by default, except if we didn't get a negotiation or when in password mode.

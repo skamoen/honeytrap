@@ -92,7 +92,7 @@ type Interaction struct {
 	Session         *Session
 	Input           []byte
 	InputTimes      []int64
-	Commands        [][]string
+	Commands        []string
 	TelnetContainer *TelnetContainer
 }
 
