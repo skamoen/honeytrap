@@ -99,12 +99,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 
 	// Send the banner to the remote host
 	log.Debugf("Sending banner %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
-	conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-	_, err = conn.Write(banner)
-	if err != nil {
-		log.Errorf("Error writing banner: %s : %s => %s", err.Error(), conn.RemoteAddr().String(), conn.LocalAddr().String())
-		return err
-	}
+	conn.Write(banner)
 
 	auth, err := s.authentication(conn, s.AllowedCredentials, session.Negotiation)
 	if err != nil {
@@ -121,12 +116,14 @@ func (s *telnetService) Handle(conn net.Conn) error {
 				return err
 			}
 			interaction.Session = session
+			session.Interaction = interaction
 		} else {
 			interaction, err := s.lowInteraction(conn, session.Negotiation)
 			if err != nil {
 				return err
 			}
 			interaction.Session = session
+			session.Interaction = interaction
 		}
 	}
 	return nil

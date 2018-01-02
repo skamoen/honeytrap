@@ -13,16 +13,14 @@ func (s *telnetService) negotiateTelnet(conn net.Conn) (*u.Negotiation, error) {
 
 	log.Debugf("Starting negotiation: %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
 	negotiation := &u.Negotiation{}
-	conn.SetDeadline(time.Now().Add(10 * time.Second))
+	defer conn.SetDeadline(time.Time{})
 
 	// Write IAC DO LINE MODE IAC WILL ECH
-	_, err := conn.Write([]byte{u.IAC, u.Do, u.Linemode, u.IAC, u.Will, u.Echo})
-	if err != nil {
-		log.Errorf("Error writing initial negotiation: %s => %s: %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
-	}
+	conn.Write([]byte{u.IAC, u.Do, u.Linemode, u.IAC, u.Will, u.Echo})
 
 	var buffer [1]byte
-	_, err = conn.Read(buffer[0:])
+	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	_, err := conn.Read(buffer[0:])
 	if err != nil {
 		log.Errorf("Error reading connection on negotiate init: %s => %s: %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
 		negotiation.Valid = false

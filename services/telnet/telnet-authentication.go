@@ -19,13 +19,15 @@ func (s *telnetService) authentication(conn net.Conn, credentials []string, nego
 
 	auth := &u.Auth{}
 
+	defer conn.SetDeadline(time.Time{})
+
 	// Read one byte at a time
 	var buf [1]byte
 	var input bytes.Buffer
 	lastInput := time.Now()
 
 	for {
-		conn.SetDeadline(time.Now().Add(timeout))
+		conn.SetReadDeadline(time.Now().Add(timeout))
 		n, err := conn.Read(buf[0:])
 		if err != nil {
 			if err == io.EOF {
