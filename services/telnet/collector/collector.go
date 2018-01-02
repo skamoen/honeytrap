@@ -36,7 +36,7 @@ func (c *Collector) RegisterConnection(conn net.Conn) *telnet.Session {
 	// Create a session to store things in
 	s := &telnet.Session{
 		Negotiation: new(telnet.Negotiation),
-		Credentials: new(telnet.Credentials),
+		Auth:        new(telnet.Auth),
 		Interaction: new(telnet.Interaction),
 		StartTime:   time.Now(),
 		RemoteAddr:  conn.RemoteAddr(),
@@ -48,7 +48,7 @@ func (c *Collector) RegisterConnection(conn net.Conn) *telnet.Session {
 	}
 
 	s.Negotiation.Session = s
-	s.Credentials.Session = s
+	s.Auth.Session = s
 	s.Interaction.Session = s
 
 	localHost, _, _ := net.SplitHostPort(s.LocalAddr.String())
