@@ -93,6 +93,7 @@ func (s *telnetService) Handle(conn net.Conn) error {
 	if err != nil {
 		return err
 	}
+	negotiation.Session = session
 	session.Negotiation = negotiation
 	s.col.LogNegotiation(session.Negotiation)
 
@@ -109,17 +110,25 @@ func (s *telnetService) Handle(conn net.Conn) error {
 	if err != nil {
 		return err
 	}
+	auth.Session = session
 	session.Auth = auth
 	s.col.LogCredentials(session.Auth)
 
 	if auth.Success {
 		if s.d != nil {
-			session.Interaction, err = s.highInteraction(conn)
+			interaction, err := s.highInteraction(conn)
+			if err != nil {
+				return err
+			}
+			interaction.Session = session
 		} else {
-			session.Interaction, err = s.lowInteraction(conn, session.Negotiation)
+			interaction, err := s.lowInteraction(conn, session.Negotiation)
+			if err != nil {
+				return err
+			}
+			interaction.Session = session
 		}
 	}
-
 	return nil
 }
 
