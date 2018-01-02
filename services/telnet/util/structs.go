@@ -3,27 +3,27 @@ package util
 import (
 	"net"
 	"time"
-	"github.com/honeytrap/honeytrap/listener/agent"
+
 	"github.com/honeytrap/honeytrap/event"
+	"github.com/honeytrap/honeytrap/listener/agent"
 )
 
 type Session struct {
-	Negotiation     *Negotiation
-	Credentials     *Credentials
-	Interaction     *Interaction
-	TelnetContainer *TelnetContainer
-	StartTime       time.Time
-	Duration        int
-	RemoteAddr      net.Addr
-	LocalAddr       net.Addr
-	AgentAddr       agent.AgentAddresser
-	Raw             bool
+	Negotiation *Negotiation
+	Auth        *Auth
+	Interaction *Interaction
+	StartTime   time.Time
+	Duration    int
+	RemoteAddr  net.Addr
+	LocalAddr   net.Addr
+	AgentAddr   agent.AgentAddresser
+	Raw         bool
 }
 
 func (s *Session) ToMap() map[string]interface{} {
 	return map[string]interface{}{
 		"negotiation": s.Negotiation.ToMap(),
-		"credentials": s.Credentials.ToMap(),
+		"credentials": s.Auth.ToMap(),
 		"interaction": s.Interaction.ToMap(),
 		"start_time":  s.StartTime,
 		"duration":    s.Duration,
@@ -48,9 +48,8 @@ func (s *Session) EventOptions() event.Option {
 }
 
 type TelnetContainer struct {
-	ContainerConnection *net.Conn
-	RemoteConnection    *net.Conn
-	ReplyChannel        chan byte
+	ContainerConnection net.Conn
+	In                  chan []byte
 }
 
 // Negotiation is the Telnet Negotiation data from the beginning of a session
@@ -71,14 +70,15 @@ func (n *Negotiation) ToMap() map[string]interface{} {
 	}
 }
 
-type Credentials struct {
+type Auth struct {
 	Session                       *Session
 	Input                         []byte
 	InputTimes                    []int64
 	Usernames, Passwords, Entries []string
+	Success                       bool
 }
 
-func (c *Credentials) ToMap() map[string]interface{} {
+func (c *Auth) ToMap() map[string]interface{} {
 	return map[string]interface{}{
 		"input_bytes": convertBytes(c.Input),
 		"input_times": c.InputTimes,
@@ -89,10 +89,11 @@ func (c *Credentials) ToMap() map[string]interface{} {
 }
 
 type Interaction struct {
-	Session    *Session
-	Input      []byte
-	InputTimes []int64
-	Commands   [][]string
+	Session         *Session
+	Input           []byte
+	InputTimes      []int64
+	Commands        [][]string
+	TelnetContainer *TelnetContainer
 }
 
 func (i *Interaction) ToMap() map[string]interface{} {

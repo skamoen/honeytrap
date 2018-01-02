@@ -16,7 +16,7 @@ func (c *Collector) LogNegotiation(n *util.Negotiation) {
 }
 
 // LogCredentials logs all credentials used
-func (c *Collector) LogCredentials(cr *util.Credentials) {
+func (c *Collector) LogCredentials(cr *util.Auth) {
 	c.c.Send(event.New(
 		cr.Session.EventOptions(),
 		event.Type("credentials"),
@@ -33,7 +33,7 @@ func (c *Collector) LogInteraction(i *util.Interaction) {
 	))
 }
 
-// LogSession logs the full session, including the Negotiation, Credentials and Commands.
+// LogSession logs the full session, including the Negotiation, Auth and Commands.
 func (c *Collector) LogSession(s *util.Session) {
 	c.c.Send(event.New(
 		s.EventOptions(),
