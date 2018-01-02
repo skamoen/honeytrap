@@ -18,6 +18,8 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 
 	interaction := &u.Interaction{}
 
+	defer conn.SetDeadline(time.Time{})
+
 	telnetContainer := &u.TelnetContainer{
 		ContainerConnection: s.dialContainer(conn),
 		In:                  make(chan []byte),
@@ -54,6 +56,7 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 				case <-rwctx.Done():
 					return
 				default:
+					conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 					nr, er := conn.Read(buf)
 					if er != nil {
 						rwcancel()
