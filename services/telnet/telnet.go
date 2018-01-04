@@ -113,18 +113,18 @@ func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 	if auth.Success {
 		if s.d != nil {
 			interaction, err := s.highInteraction(conn)
+			interaction.Session = session
+			session.Interaction = interaction
 			if err != nil {
 				return err
 			}
-			interaction.Session = session
-			session.Interaction = interaction
 		} else {
 			interaction, err := s.lowInteraction(conn, session.Negotiation)
+			interaction.Session = session
+			session.Interaction = interaction
 			if err != nil {
 				return err
 			}
-			interaction.Session = session
-			session.Interaction = interaction
 		}
 	}
 	return nil
