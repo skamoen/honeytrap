@@ -44,7 +44,7 @@ import (
 )
 
 var (
-	_ = Register("telnet", Telnet)
+	_ = Register("telnet-ms", Telnet)
 )
 
 var (
