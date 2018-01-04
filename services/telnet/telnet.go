@@ -34,6 +34,7 @@ import (
 
 	// Lazy import for util structs
 
+	"context"
 	"net"
 	"time"
 
@@ -78,7 +79,7 @@ func (s *telnetService) SetChannel(c pushers.Channel) {
 	s.c = c
 }
 
-func (s *telnetService) Handle(conn net.Conn) error {
+func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 	// Declare variables used
 	banner := []byte("\nUser Access Verification\r\nUsername:")
 
