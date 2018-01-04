@@ -143,9 +143,9 @@ func (d *lxcDirector) newContainer(name string, template string) (*lxcContainer,
 		eb:       d.eb,
 		d:        d,
 		Delays: Delays{
-			FreezeDelay:      Delay(15 * time.Minute),
-			StopDelay:        Delay(30 * time.Minute),
-			HousekeeperDelay: Delay(1 * time.Minute),
+			FreezeDelay:      Delay(2 * time.Minute),
+			StopDelay:        Delay(5 * time.Minute),
+			HousekeeperDelay: Delay(30 * time.Second),
 		},
 	}
 
