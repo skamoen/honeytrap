@@ -98,9 +98,18 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 		if i := strings.Index(string(data), "\r\u0000"); i >= 0 {
 			return i + 2, data[0:i], nil
 		}
+
+		// Byte sequence 10 is also newline
+		if i := bytes.Index(data, []byte{10}); i >= 0 {
+			if data[i-1] == 13 {
+				return i + 1, data[0 : i-1], nil
+			} else {
+				return i + 1, data[0:i], nil
+			}
+		}
 		// If at end of file with data return the data
 		if atEOF {
-			return len(data), nil, nil
+			return len(data), data, nil
 		}
 		return
 
