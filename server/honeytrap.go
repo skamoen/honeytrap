@@ -445,6 +445,18 @@ func (hc *Honeytrap) Run(ctx context.Context) {
 		fmt.Println(color.RedString("Error starting listener: %s", err.Error()))
 	}
 
+	for key, s := range hc.config.Agents {
+		x := struct {
+			Range []string `toml:"range"`
+			Token []string `toml:"token"`
+		}{}
+
+		if err := toml.PrimitiveDecode(s, &x); err != nil {
+			log.Error("Error parsing configuration of agent %s: %s", key, err.Error())
+			continue
+		}
+	}
+
 	incoming := make(chan net.Conn)
 
 	go func() {
