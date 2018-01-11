@@ -1,6 +1,7 @@
 package telnet
 
 import (
+	"io"
 	"net"
 	"time"
 
@@ -13,19 +14,19 @@ func (s *telnetService) negotiateTelnet(conn net.Conn) (*u.Negotiation, error) {
 
 	log.Debugf("Starting negotiation: %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
 	negotiation := &u.Negotiation{}
-	defer conn.SetDeadline(time.Time{})
 
 	// Write IAC DO LINE MODE IAC WILL ECH
 	conn.Write([]byte{u.IAC, u.Do, u.Linemode, u.IAC, u.Will, u.Echo})
 
 	var buffer [1]byte
-	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	_, err := conn.Read(buffer[0:])
 	if err != nil {
 		log.Errorf("Error reading connection on negotiate init: %s => %s: %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
 		negotiation.Valid = false
 		return negotiation, err
 	}
+	conn.SetDeadline(time.Time{})
 
 	negotiation.Bytes = append(negotiation.Bytes, buffer[0])
 
@@ -35,13 +36,20 @@ func (s *telnetService) negotiateTelnet(conn net.Conn) (*u.Negotiation, error) {
 		validOption := false
 
 		for {
-			conn.SetDeadline(time.Now().Add(10 * time.Second))
+			conn.SetDeadline(time.Now().Add(5 * time.Second))
 			// Read next byte, expect option
 			_, err := conn.Read(buffer[0:])
 			if err != nil {
-				log.Errorf("Error reading connection: %s : %s => %s", err.Error(), conn.RemoteAddr().String(), conn.LocalAddr().String())
+				if err == io.EOF {
+					log.Infof("Client closed connection: %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
+				} else {
+					log.Errorf("Error reading connection: %s : %s => %s", err.Error(), conn.RemoteAddr().String(), conn.LocalAddr().String())
+				}
+				conn.Close()
 				return negotiation, err
 			}
+			conn.SetDeadline(time.Time{})
+
 			negotiation.Bytes = append(negotiation.Bytes, buffer[0])
 
 			// If null byte, try again
