@@ -80,6 +80,7 @@ func (s *telnetService) SetChannel(c pushers.Channel) {
 }
 
 func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
+	defer conn.Close()
 	// Declare variables used
 	banner := []byte("\nUser Access Verification\r\nUsername:")
 

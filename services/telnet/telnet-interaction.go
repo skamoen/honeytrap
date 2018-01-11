@@ -18,21 +18,21 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 
 	interaction := &u.Interaction{}
 
-	defer conn.SetDeadline(time.Time{})
-
 	telnetContainer := &u.TelnetContainer{
 		ContainerConnection: s.dialContainer(conn),
 		In:                  make(chan []byte),
 	}
+
+	defer telnetContainer.ContainerConnection.Close()
+
 	interaction.TelnetContainer = telnetContainer
 
 	// Process the command and add it to the list of commands
 	if telnetContainer != nil {
-
 		// Create a context for closing the following goroutines
 		rwctx, rwcancel := context.WithCancel(context.Background())
+		defer rwcancel()
 		go func() {
-			defer telnetContainer.ContainerConnection.Close()
 			// Proxy all incoming bytes to the container
 			for {
 				select {
@@ -65,6 +65,8 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 					} else if nr == 0 {
 						continue
 					}
+					conn.SetDeadline(time.Time{})
+
 					interaction.Input = append(interaction.Input, buf[:nr]...)
 					telnetContainer.In <- buf[:nr]
 				}
@@ -122,8 +124,10 @@ func (s *telnetService) lowInteraction(conn net.Conn, negotiation *u.Negotiation
 			} else {
 				log.Errorf("Error occurred reading connection: %s => %s:  %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
 			}
+			conn.Close()
 			return interaction, err
 		}
+		conn.SetDeadline(time.Time{})
 
 		// Save the received input regardless of content
 		interaction.Input = append(interaction.Input, buf[0])

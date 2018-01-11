@@ -19,8 +19,6 @@ func (s *telnetService) authentication(conn net.Conn, credentials []string, nego
 
 	auth := &u.Auth{}
 
-	defer conn.SetDeadline(time.Time{})
-
 	// Read one byte at a time
 	var buf [1]byte
 	var input bytes.Buffer
@@ -35,8 +33,10 @@ func (s *telnetService) authentication(conn net.Conn, credentials []string, nego
 			} else {
 				log.Errorf("Error occurred reading connection: %s => %s:  %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
 			}
+			conn.Close()
 			return auth, err
 		}
+		conn.SetDeadline(time.Time{})
 
 		// Save the received input regardless of content
 		auth.Input = append(auth.Input, buf[0])
