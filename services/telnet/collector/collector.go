@@ -5,10 +5,10 @@ import (
 	"net"
 	"time"
 
+	"github.com/honeytrap/honeytrap/listener/agent"
 	"github.com/honeytrap/honeytrap/pushers"
 	telnet "github.com/honeytrap/honeytrap/services/telnet/util"
 	"golang.org/x/sync/syncmap"
-	"github.com/honeytrap/honeytrap/listener/agent"
 )
 
 type Collector struct {
@@ -67,7 +67,7 @@ func (c *Collector) RegisterConnection(conn net.Conn) *telnet.Session {
 // SubmitNegotiation saves a completed negotiation result
 func (c *Collector) SubmitNegotiation(n *telnet.Negotiation) {
 	// n.Session.Negotiation = n
-	c.LogNegotiation(n)
+	//c.LogNegotiation(n)
 
 	// pn := parseCommands(n)
 	// seenBefore := checkNegotiation(c.negotiations, pn)

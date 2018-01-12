@@ -23,15 +23,16 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 		In:                  make(chan []byte),
 	}
 
-	defer telnetContainer.ContainerConnection.Close()
-
-	interaction.TelnetContainer = telnetContainer
-
 	// Process the command and add it to the list of commands
 	if telnetContainer != nil {
+
+		interaction.TelnetContainer = telnetContainer
+		defer telnetContainer.ContainerConnection.Close()
+
 		// Create a context for closing the following goroutines
 		rwctx, rwcancel := context.WithCancel(context.Background())
 		defer rwcancel()
+
 		go func() {
 			// Proxy all incoming bytes to the container
 			for {
@@ -124,7 +125,6 @@ func (s *telnetService) lowInteraction(conn net.Conn, negotiation *u.Negotiation
 			} else {
 				log.Errorf("Error occurred reading connection: %s => %s:  %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
 			}
-			conn.Close()
 			return interaction, err
 		}
 		conn.SetDeadline(time.Time{})

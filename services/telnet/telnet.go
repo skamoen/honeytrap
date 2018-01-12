@@ -80,7 +80,6 @@ func (s *telnetService) SetChannel(c pushers.Channel) {
 }
 
 func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
-	defer conn.Close()
 	// Declare variables used
 	banner := []byte("\nUser Access Verification\r\nUsername:")
 
@@ -89,6 +88,8 @@ func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 
 	// When session ends, close the connections and log everything.
 	defer s.logSession(session)
+	// Close connection first, then log
+	defer conn.Close()
 
 	// Negotiate linemode and echo. Results will be stored in the session.
 	negotiation, err := s.negotiateTelnet(conn)
@@ -97,7 +98,6 @@ func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 	}
 	negotiation.Session = session
 	session.Negotiation = negotiation
-	s.col.LogNegotiation(session.Negotiation)
 
 	// Send the banner to the remote host
 	log.Debugf("Sending banner %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
@@ -109,23 +109,18 @@ func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 	}
 	auth.Session = session
 	session.Auth = auth
-	s.col.LogCredentials(session.Auth)
 
 	if auth.Success {
 		if s.d != nil {
-			interaction, err := s.highInteraction(conn)
-			interaction.Session = session
-			session.Interaction = interaction
-			if err != nil {
-				return err
-			}
+			session.Interaction, err = s.highInteraction(conn)
+
 		} else {
-			interaction, err := s.lowInteraction(conn, session.Negotiation)
-			interaction.Session = session
-			session.Interaction = interaction
-			if err != nil {
-				return err
-			}
+			session.Interaction, err = s.lowInteraction(conn, session.Negotiation)
+
+		}
+		session.Interaction.Session = session
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -142,6 +137,5 @@ func contains(s []string, e string) bool {
 
 func (s *telnetService) logSession(session *u.Session) {
 	session.Duration = int(time.Since(session.StartTime).Nanoseconds() / 1000000)
-	s.col.LogInteraction(session.Interaction)
 	s.col.LogSession(session)
 }

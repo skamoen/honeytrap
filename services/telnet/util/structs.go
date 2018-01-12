@@ -85,6 +85,7 @@ func (c *Auth) ToMap() map[string]interface{} {
 		"usernames":   c.Usernames,
 		"passwords":   c.Passwords,
 		"entries":     c.Entries,
+		"success":     c.Success,
 	}
 }
 
