@@ -116,6 +116,8 @@ func (s *telnetService) lowInteraction(conn net.Conn, negotiation *u.Negotiation
 	var input bytes.Buffer
 	lastInput := time.Now()
 
+	conn.Write([]byte("\r\n~# "))
+
 	for {
 		conn.SetDeadline(time.Now().Add(timeout))
 		n, err := conn.Read(buf[0:])
@@ -153,8 +155,9 @@ func (s *telnetService) lowInteraction(conn net.Conn, negotiation *u.Negotiation
 			input.Reset()
 
 			output := s.handleLowInteractionCommand(inputString)
+			interaction.Commands = append(interaction.Commands, inputString)
 			conn.Write([]byte(output))
-			conn.Write([]byte("\r\n# "))
+			conn.Write([]byte("~# "))
 		case 13:
 			// Only used in combination with one of the above, ignore.
 		default:
@@ -183,6 +186,8 @@ func (s *telnetService) handleLowInteractionCommand(command string) string {
 		index := strings.Index(command, "x ")
 		appName := command[index+2:]
 		return "\r\n" + appName + ": applet not found\r\n"
+	case command == "":
+		return "\r\n"
 	default:
 		return "\r\n" + command + ": command not found\r\n"
 	}
