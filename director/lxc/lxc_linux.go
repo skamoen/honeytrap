@@ -119,7 +119,7 @@ func (d *lxcDirector) Dial(conn net.Conn) (net.Conn, error) {
 	h.Write([]byte(remoteAddr))
 	hash := h.Sum(nil)
 
-	name := fmt.Sprintf("honeytrap-%s", hex.EncodeToString(hash))
+	name := fmt.Sprintf("firmware-%s", hex.EncodeToString(hash))
 
 	c, ok := d.cache.Load(name)
 	// c := d.cache[name]
