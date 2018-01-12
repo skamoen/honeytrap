@@ -45,7 +45,6 @@ func (s *telnetService) negotiateTelnet(conn net.Conn) (*u.Negotiation, error) {
 				} else {
 					log.Errorf("Error reading connection: %s : %s => %s", err.Error(), conn.RemoteAddr().String(), conn.LocalAddr().String())
 				}
-				conn.Close()
 				return negotiation, err
 			}
 			conn.SetDeadline(time.Time{})

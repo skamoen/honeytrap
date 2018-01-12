@@ -5,7 +5,7 @@ import (
 	"github.com/honeytrap/honeytrap/services/telnet/util"
 )
 
-// LogNegotiation logs the negotiation for a session
+/*// LogNegotiation logs the negotiation for a session
 func (c *Collector) LogNegotiation(n *util.Negotiation) {
 
 	c.c.Send(event.New(
@@ -31,7 +31,7 @@ func (c *Collector) LogInteraction(i *util.Interaction) {
 		event.Type("commands"),
 		event.CopyFrom(i.ToMap()),
 	))
-}
+}*/
 
 // LogSession logs the full session, including the Negotiation, Auth and Commands.
 func (c *Collector) LogSession(s *util.Session) {
