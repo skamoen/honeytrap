@@ -182,9 +182,14 @@ func (s *telnetService) handleLowInteractionCommand(command string) string {
 	case command == "whoami":
 		return "\r\nadmin\r\n"
 
+	case strings.Contains(command, "cat /proc/mounts; (/bin/busybox"):
+		mounts := "sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0\r\nproc /proc proc rw,nosuid,nodev,noexec,relatime 0 0\r\nudev /dev devtmpfs rw,nosuid,relatime,size=243480k,nr_inodes=60870,mode=755 0 0\r\ndevpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0\r\ntmpfs /run tmpfs rw,nosuid,noexec,relatime,size=50952k,mode=755 0 0\r\n/dev/mmcblk0p2 / ext4 rw,relatime,data=ordered 0 0\r\ntmpfs /dev/shm tmpfs rw,nosuid,nodev 0 0\r\ntmpfs /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0\r\ntmpfs /sys/fs/cgroup tmpfs ro,nosuid,nodev,noexec,mode=755 0 0\r\ncgroup /sys/fs/cgroup/systemd cgroup rw,nosuid,nodev,noexec,relatime,xattr,release_agent=/lib/systemd/systemd-cgroups-agent,name=systemd 0 0\r\ncgroup /sys/fs/cgroup/net_cls cgroup rw,nosuid,nodev,noexec,relatime,net_cls 0 0\r\nmqueue /dev/mqueue mqueue rw,relatime 0 0\r\ndebugfs /sys/kernel/debug debugfs rw,relatime 0 0\r\nconfigfs /sys/kernel/config configfs rw,relatime 0 0\r\nfusectl /sys/fs/fuse/connections fusectl rw,relatime 0 0\r\n/dev/mmcblk0p1 /boot vfat rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro 0 0\r\ntmpfs /run/user/1000 tmpfs rw,nosuid,nodev,relatime,size=50952k,mode=700,uid=1000,gid=1000 0 0\r\ntmpfs /run/user/0 tmpfs rw,nosuid,nodev,relatime,size=50952k,mode=700 0 0\r\n"
+		index := strings.Index(command, "x ")
+		appName := command[index+2 : index+7]
+		return "\r\n" + mounts + appName + ": applet not found\r\n"
 	case strings.Contains(command, "/bin/busybox"):
 		index := strings.Index(command, "x ")
-		appName := command[index+2:]
+		appName := command[index+2 : index+7]
 		return "\r\n" + appName + ": applet not found\r\n"
 	case command == "":
 		return "\r\n"
