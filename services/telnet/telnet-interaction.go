@@ -18,8 +18,12 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 
 	interaction := &u.Interaction{}
 
+	containerConnection, err := s.dialContainer(conn)
+	if err != nil {
+		return interaction, err
+	}
 	telnetContainer := &u.TelnetContainer{
-		ContainerConnection: s.dialContainer(conn),
+		ContainerConnection: containerConnection,
 		In:                  make(chan []byte),
 	}
 
@@ -198,16 +202,20 @@ func (s *telnetService) handleLowInteractionCommand(command string) string {
 	}
 }
 
-func (s *telnetService) dialContainer(conn net.Conn) net.Conn {
+func (s *telnetService) dialContainer(conn net.Conn) (net.Conn, error) {
 	cConn, err := s.d.Dial(conn)
 	if err != nil {
+		cConn.Close()
 		log.Errorf("Error dialing container: %s", err.Error())
+		return nil, err
 	}
 	// Handle negotiation
 	var conRead [512]byte
 	_, err = cConn.Read(conRead[0:])
 	if err != nil {
+		cConn.Close()
 		log.Errorf("Error reading from container: %s", err.Error())
+		return nil, err
 	}
 	cConn.Write([]byte{0xff, 0xfb, 0x18, 0xff, 0xfb, 0x20, 0xff, 0xfb,
 		0x23, 0xff, 0xfb, 0x27})
@@ -242,5 +250,5 @@ func (s *telnetService) dialContainer(conn net.Conn) net.Conn {
 
 	log.Debug("Authenticated to container")
 	conn.Write(prompt[0:])
-	return cConn
+	return cConn, nil
 }

@@ -136,6 +136,8 @@ func (d *lxcDirector) Dial(conn net.Conn) (net.Conn, error) {
 		// d.cache[name] = c
 		//m.Unlock()
 		d.cache.Store(name, c)
+	} else {
+		go c.(*lxcContainer).housekeeper()
 	}
 
 	if err := c.(*lxcContainer).ensureStarted(); err != nil {
@@ -183,6 +185,8 @@ func (d *lxcDirector) newContainer(name string, template string) (*lxcContainer,
 			HousekeeperDelay: Delay(15 * time.Second),
 		},
 	}
+
+	go c.housekeeper()
 
 	if c2, err := lxc.NewContainer(c.name); err == nil {
 		// TODO(nl5887): beautify
@@ -282,8 +286,6 @@ func (c *lxcContainer) start() error {
 	c.c.WantDaemonize(true)
 
 	c.lxcCh <- LxcStart{c.c}
-	// Housekeeper only runs in Running containers, so start it always
-	go c.housekeeper()
 
 	if err := c.settle(); err != nil {
 		return err
