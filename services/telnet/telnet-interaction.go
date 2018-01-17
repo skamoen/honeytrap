@@ -143,6 +143,12 @@ func removeLine(line string) bool {
 		return true
 	} else if strings.Contains(line, "hugetlbfs") {
 		return true
+	} else if strings.Contains(line, "virtual") {
+		return true
+	} else if strings.Contains(line, "security") {
+		return true
+	} else if strings.Contains(line, " ro,") {
+		return true
 	}
 	return false
 }
