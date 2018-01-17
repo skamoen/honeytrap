@@ -169,6 +169,7 @@ type lxcContainer struct {
 	idevice  string
 	template string
 	Delays   Delays
+	hk       bool
 }
 
 // NewContainer returns a new LxcContainer from the provider.
@@ -203,6 +204,14 @@ func (d *lxcDirector) newContainer(name string, template string) (*lxcContainer,
 // housekeeper handles the needed process of handling internal logic
 // in maintaining the provided lxc.Container.
 func (c *lxcContainer) housekeeper() {
+	if c.hk {
+		log.Infof("Housekeeper (%s) already running.", c.name)
+		return
+	}
+	c.hk = true
+	defer func() {
+		c.hk = false
+	}()
 	// container lifetime function
 	log.Infof("Housekeeper (%s) started.", c.name)
 	defer log.Infof("Housekeeper (%s) stopped.", c.name)
@@ -325,8 +334,13 @@ func (c *lxcContainer) unfreeze() error {
 func (c *lxcContainer) settle() error {
 	log.Infof("Waiting for container %s to settle, current state=%s", c.name, c.c.State())
 
+	// Broken: https://github.com/lxc/go-lxc/issues/98
 	if !c.c.Wait(lxc.RUNNING, 30*time.Second) {
-		return fmt.Errorf("lxccontainer still not running %s", c.name)
+		time.Sleep(time.Millisecond * 500)
+		if !c.c.Wait(lxc.RUNNING, 30*time.Second) {
+
+			return fmt.Errorf("lxccontainer still not running %s", c.name)
+		}
 	}
 
 	retries := 0
