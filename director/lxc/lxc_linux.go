@@ -38,6 +38,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net"
+	"runtime"
 	"time"
 
 	"github.com/honeytrap/honeytrap/director"
@@ -212,6 +213,17 @@ func (c *lxcContainer) housekeeper() {
 	defer func() {
 		c.hk = false
 	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			trace := make([]byte, 1024)
+			count := runtime.Stack(trace, true)
+			log.Errorf("Error: %s", err)
+			log.Errorf("Stack of %d bytes: %s\n", count, string(trace))
+			return
+		}
+	}()
+
 	// container lifetime function
 	log.Infof("Housekeeper (%s) started.", c.name)
 	defer log.Infof("Housekeeper (%s) stopped.", c.name)
@@ -219,7 +231,7 @@ func (c *lxcContainer) housekeeper() {
 	for {
 		time.Sleep(time.Duration(c.Delays.HousekeeperDelay))
 
-		if c.isStopped() {
+		if c != nil && c.isStopped() {
 			continue
 		}
 
