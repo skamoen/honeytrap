@@ -238,14 +238,15 @@ func (c *lxcContainer) housekeeper() {
 			continue
 		}
 
-		if time.Since(c.idle) > time.Duration(c.Delays.StopDelay) && c.isFrozen() {
+		if time.Since(c.idle) > time.Duration(c.Delays.StopDelay) {
 			log.Debugf("LxcContainer %s: idle for %s, stopping container", c.name, time.Now().Sub(c.idle).String())
 			c.lxcCh <- LxcStop{c.c}
 			return
-		} else if time.Since(c.idle) > time.Duration(c.Delays.FreezeDelay) && c.isRunning() {
-			log.Debugf("LxcContainer %s: idle for %s, freezing container", c.name, time.Now().Sub(c.idle).String())
-			c.lxcCh <- LxcFreeze{c.c}
 		}
+		//} else if time.Since(c.idle) > time.Duration(c.Delays.FreezeDelay) && c.isRunning() {
+		//	log.Debugf("LxcContainer %s: idle for %s, freezing container", c.name, time.Now().Sub(c.idle).String())
+		//	c.lxcCh <- LxcFreeze{c.c}
+		//}
 	}
 }
 
