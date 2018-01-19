@@ -149,6 +149,8 @@ func removeLine(line string) bool {
 		return true
 	} else if strings.Contains(line, " ro,") {
 		return true
+	} else if strings.Contains(line, "none") {
+		return true
 	}
 	return false
 }
