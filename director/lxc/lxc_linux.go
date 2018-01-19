@@ -146,6 +146,9 @@ func (d *lxcDirector) Dial(conn net.Conn) (net.Conn, error) {
 		return nil, err
 	}
 
+	log.Infof("Using container %s with IP %s for %s => %s", name, c.(*lxcContainer).ip.String(),
+		conn.RemoteAddr().String(), conn.LocalAddr().String())
+
 	if ta, ok := conn.LocalAddr().(*net.TCPAddr); ok {
 		connection, err := c.(*lxcContainer).Dial("tcp", ta.Port)
 		return lxcContainerConn{Conn: connection, container: c.(*lxcContainer)}, err
