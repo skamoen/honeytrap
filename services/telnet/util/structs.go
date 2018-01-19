@@ -100,11 +100,17 @@ type Interaction struct {
 }
 
 func (i *Interaction) ToMap() map[string]interface{} {
-	return map[string]interface{}{
+	interaction := map[string]interface{}{
 		"input_bytes": convertBytes(i.Input),
 		"input_times": i.InputTimes,
 		"commands":    i.Commands,
 	}
+
+	if i.TelnetContainer != nil {
+		interaction["lxc_ip"] = i.TelnetContainer.ContainerConnection.RemoteAddr().String()
+	}
+
+	return interaction
 }
 
 func convertBytes(i []byte) []int {
