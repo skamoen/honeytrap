@@ -39,7 +39,6 @@ import (
 var log = logging.MustGetLogger("director/lxc")
 
 type Delays struct {
-	FreezeDelay      Delay `toml:"freeze_every"`
 	StopDelay        Delay `toml:"stop_every"`
 	HousekeeperDelay Delay `toml:"housekeeper_every"`
 }
