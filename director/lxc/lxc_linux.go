@@ -38,6 +38,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net"
+	"runtime"
 	"time"
 
 	"github.com/honeytrap/honeytrap/director"
@@ -136,6 +137,8 @@ func (d *lxcDirector) Dial(conn net.Conn) (net.Conn, error) {
 		// d.cache[name] = c
 		//m.Unlock()
 		d.cache.Store(name, c)
+	} else {
+		go c.(*lxcContainer).housekeeper()
 	}
 
 	if err := c.(*lxcContainer).ensureStarted(); err != nil {
@@ -167,6 +170,7 @@ type lxcContainer struct {
 	idevice  string
 	template string
 	Delays   Delays
+	hk       bool
 }
 
 // NewContainer returns a new LxcContainer from the provider.
@@ -184,6 +188,8 @@ func (d *lxcDirector) newContainer(name string, template string) (*lxcContainer,
 		},
 	}
 
+	go c.housekeeper()
+
 	if c2, err := lxc.NewContainer(c.name); err == nil {
 		// TODO(nl5887): beautify
 		c.c = c2
@@ -199,6 +205,25 @@ func (d *lxcDirector) newContainer(name string, template string) (*lxcContainer,
 // housekeeper handles the needed process of handling internal logic
 // in maintaining the provided lxc.Container.
 func (c *lxcContainer) housekeeper() {
+	if c.hk {
+		log.Infof("Housekeeper (%s) already running.", c.name)
+		return
+	}
+	c.hk = true
+	defer func() {
+		c.hk = false
+	}()
+
+	defer func() {
+		if err := recover(); err != nil {
+			trace := make([]byte, 1024)
+			count := runtime.Stack(trace, true)
+			log.Errorf("Error: %s", err)
+			log.Errorf("Stack of %d bytes: %s\n", count, string(trace))
+			return
+		}
+	}()
+
 	// container lifetime function
 	log.Infof("Housekeeper (%s) started.", c.name)
 	defer log.Infof("Housekeeper (%s) stopped.", c.name)
@@ -206,7 +231,7 @@ func (c *lxcContainer) housekeeper() {
 	for {
 		time.Sleep(time.Duration(c.Delays.HousekeeperDelay))
 
-		if c.isStopped() {
+		if c != nil && c.isStopped() {
 			continue
 		}
 
@@ -282,8 +307,6 @@ func (c *lxcContainer) start() error {
 	c.c.WantDaemonize(true)
 
 	c.lxcCh <- LxcStart{c.c}
-	// Housekeeper only runs in Running containers, so start it always
-	go c.housekeeper()
 
 	if err := c.settle(); err != nil {
 		return err
@@ -323,8 +346,13 @@ func (c *lxcContainer) unfreeze() error {
 func (c *lxcContainer) settle() error {
 	log.Infof("Waiting for container %s to settle, current state=%s", c.name, c.c.State())
 
+	// Broken: https://github.com/lxc/go-lxc/issues/98
 	if !c.c.Wait(lxc.RUNNING, 30*time.Second) {
-		return fmt.Errorf("lxccontainer still not running %s", c.name)
+		time.Sleep(time.Millisecond * 500)
+		if !c.c.Wait(lxc.RUNNING, 30*time.Second) {
+
+			return fmt.Errorf("lxccontainer still not running %s", c.name)
+		}
 	}
 
 	retries := 0

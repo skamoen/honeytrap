@@ -18,8 +18,12 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 
 	interaction := &u.Interaction{}
 
+	containerConnection, err := s.dialContainer(conn)
+	if err != nil {
+		return interaction, err
+	}
 	telnetContainer := &u.TelnetContainer{
-		ContainerConnection: s.dialContainer(conn),
+		ContainerConnection: containerConnection,
 		In:                  make(chan []byte),
 	}
 
@@ -89,7 +93,22 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 				} else if nr == 0 {
 					continue
 				}
-				conn.Write(buf[:nr])
+
+				filter := bufio.NewScanner(bytes.NewReader(buf[:nr]))
+				filter.Split(splitLines)
+				var filteredOutput string
+				for filter.Scan() {
+					line := filter.Text()
+					if !removeLine(line) {
+						filteredOutput = filteredOutput + line
+					}
+				}
+				if filter.Err() == nil {
+					filteredOutput = filteredOutput + filter.Text()
+				} else {
+					log.Errorf("Error reading lines %s ", err.Error())
+				}
+				conn.Write([]byte(filteredOutput))
 			}
 		}
 	} else {
@@ -105,6 +124,33 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 		log.Debugf("Error parsing commands: %s ", scanner.Err().Error())
 	}
 	return interaction, nil
+}
+
+func removeLine(line string) bool {
+	if !strings.Contains(line, "relatime") {
+		return false
+	}
+	if !strings.Contains(line, "0 0") {
+		return false
+	}
+	if strings.Contains(line, "lxc") {
+		return true
+	} else if strings.Contains(line, "cgroup") {
+		return true
+	} else if strings.Contains(line, "honeytrap") {
+		return true
+	} else if strings.Contains(line, "pstore") {
+		return true
+	} else if strings.Contains(line, "hugetlbfs") {
+		return true
+	} else if strings.Contains(line, "virtual") {
+		return true
+	} else if strings.Contains(line, "security") {
+		return true
+	} else if strings.Contains(line, " ro,") {
+		return true
+	}
+	return false
 }
 
 func (s *telnetService) lowInteraction(conn net.Conn, negotiation *u.Negotiation) (*u.Interaction, error) {
@@ -198,16 +244,20 @@ func (s *telnetService) handleLowInteractionCommand(command string) string {
 	}
 }
 
-func (s *telnetService) dialContainer(conn net.Conn) net.Conn {
+func (s *telnetService) dialContainer(conn net.Conn) (net.Conn, error) {
 	cConn, err := s.d.Dial(conn)
 	if err != nil {
+		cConn.Close()
 		log.Errorf("Error dialing container: %s", err.Error())
+		return nil, err
 	}
 	// Handle negotiation
 	var conRead [512]byte
 	_, err = cConn.Read(conRead[0:])
 	if err != nil {
+		cConn.Close()
 		log.Errorf("Error reading from container: %s", err.Error())
+		return nil, err
 	}
 	cConn.Write([]byte{0xff, 0xfb, 0x18, 0xff, 0xfb, 0x20, 0xff, 0xfb,
 		0x23, 0xff, 0xfb, 0x27})
@@ -242,5 +292,20 @@ func (s *telnetService) dialContainer(conn net.Conn) net.Conn {
 
 	log.Debug("Authenticated to container")
 	conn.Write(prompt[0:])
-	return cConn
+	return cConn, nil
+}
+
+func splitLines(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	if i := bytes.IndexByte(data, '\n'); i >= 0 {
+		return i + 1, data[0 : i+1], nil
+	}
+	// If we're at EOF, we have a final, non-terminated line. Return it.
+	if atEOF {
+		return len(data), data, nil
+	}
+	// Request more data.
+	return 0, nil, nil
 }
