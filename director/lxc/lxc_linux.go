@@ -57,7 +57,7 @@ func New(options ...func(director.Director) error) (director.Director, error) {
 	d := &lxcDirector{
 		eb:       pushers.MustDummy(),
 		lxcCh:    make(chan interface{}),
-		template: "honeytrap",
+		template: "firmware",
 	}
 
 	for _, optionFn := range options {
