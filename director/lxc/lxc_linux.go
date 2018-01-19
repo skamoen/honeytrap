@@ -57,7 +57,7 @@ func New(options ...func(director.Director) error) (director.Director, error) {
 	d := &lxcDirector{
 		eb:       pushers.MustDummy(),
 		lxcCh:    make(chan interface{}),
-		template: "honeytrap",
+		Template: "honeytrap",
 	}
 
 	for _, optionFn := range options {
@@ -71,11 +71,9 @@ func New(options ...func(director.Director) error) (director.Director, error) {
 
 type LxcStop struct{ c *lxc.Container }
 type LxcStart struct{ c *lxc.Container }
-type LxcFreeze struct{ c *lxc.Container }
-type LxcUnfreeze struct{ c *lxc.Container }
 
 type lxcDirector struct {
-	template string
+	Template string `toml:"template"`
 	eb       pushers.Channel
 	cache    *syncmap.Map // map[string]*lxcContainer
 	lxcCh    chan interface{}
@@ -94,16 +92,6 @@ func (d *lxcDirector) HandleLxcCommands() {
 			err := x.(LxcStart).c.Start()
 			if err != nil {
 				log.Errorf("Error Starting container: %s, because %s", x.(LxcStart).c.Name(), err.Error())
-			}
-		case LxcFreeze:
-			err := x.(LxcFreeze).c.Freeze()
-			if err != nil {
-				log.Errorf("Error Freezing container: %s, because %s", x.(LxcFreeze).c.Name(), err.Error())
-			}
-		case LxcUnfreeze:
-			err := x.(LxcUnfreeze).c.Unfreeze()
-			if err != nil {
-				log.Errorf("Error UnFreezing container: %s, because %s", x.(LxcUnfreeze).c.Name(), err.Error())
 			}
 		}
 	}
@@ -127,7 +115,7 @@ func (d *lxcDirector) Dial(conn net.Conn) (net.Conn, error) {
 	if !ok {
 		var err error
 
-		c, err = d.newContainer(name, d.template)
+		c, err = d.newContainer(name, d.Template)
 		if err != nil {
 			log.Errorf("Error creating container: %s", err.Error())
 			return nil, err
@@ -182,7 +170,6 @@ func (d *lxcDirector) newContainer(name string, template string) (*lxcContainer,
 		d:        d,
 		lxcCh:    d.lxcCh,
 		Delays: Delays{
-			FreezeDelay:      Delay(1 * time.Minute),
 			StopDelay:        Delay(2 * time.Minute),
 			HousekeeperDelay: Delay(15 * time.Second),
 		},
@@ -235,20 +222,17 @@ func (c *lxcContainer) housekeeper() {
 			continue
 		}
 
-		if time.Since(c.idle) > time.Duration(c.Delays.StopDelay) && c.isFrozen() {
+		if time.Since(c.idle) > time.Duration(c.Delays.StopDelay) {
 			log.Debugf("LxcContainer %s: idle for %s, stopping container", c.name, time.Now().Sub(c.idle).String())
 			c.lxcCh <- LxcStop{c.c}
 			return
-		} else if time.Since(c.idle) > time.Duration(c.Delays.FreezeDelay) && c.isRunning() {
-			log.Debugf("LxcContainer %s: idle for %s, freezing container", c.name, time.Now().Sub(c.idle).String())
-			c.lxcCh <- LxcFreeze{c.c}
 		}
 	}
 }
 
 // clone attempts to clone the underline lxc.Container.
 func (c *lxcContainer) clone() error {
-	log.Debugf("Creating new container %s from template %s", c.name, c.d.template)
+	log.Debugf("Creating new container %s from template %s", c.name, c.d.Template)
 
 	c1, err := lxc.NewContainer(c.template)
 	if err != nil {
@@ -311,27 +295,6 @@ func (c *lxcContainer) start() error {
 	if err := c.settle(); err != nil {
 		return err
 	}
-
-	/*
-		if err := c.sf.Start(c.idevice); err != nil {
-			log.Errorf("Error occurred while attaching sniffer for %s to %s: %s", c.name, c.idevice, err.Error())
-		}
-	*/
-
-	return nil
-}
-
-// unfreeze sets the internal container into an unfrozen state.
-func (c *lxcContainer) unfreeze() error {
-	log.Infof("Unfreezing container: %s", c.name)
-
-	c.lxcCh <- LxcUnfreeze{c.c}
-
-	if err := c.settle(); err != nil {
-		return err
-	}
-
-	c.d.eb.Send(ContainerUnfrozenEvent(c.name, c.ip))
 
 	/*
 		if err := c.sf.Start(c.idevice); err != nil {
@@ -406,10 +369,6 @@ func (c *lxcContainer) settle() error {
 }
 
 func (c *lxcContainer) ensureStarted() error {
-	if c.isFrozen() {
-		return c.unfreeze()
-	}
-
 	if c.isStopped() {
 		return c.start()
 	}
