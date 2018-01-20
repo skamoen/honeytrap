@@ -33,9 +33,6 @@ func (c *lxcContainer) stillActive() error {
 	if c.isStopped() {
 		return fmt.Errorf("lxccontainer not running %s", c.name)
 	}
-	if c.isFrozen() {
-		return c.unfreeze()
-	}
 	if !c.isRunning() {
 		return fmt.Errorf("lxccontainer in unknown state %s:%s", c.name, c.c.State())
 	}
