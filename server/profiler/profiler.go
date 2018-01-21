@@ -74,7 +74,7 @@ type profiler struct {
 
 func (p *profiler) Start() {
 	go func() {
-		http.ListenAndServe("127.0.0.1:6060", nil)
+		http.ListenAndServe(":6060", nil)
 	}()
 
 	p.p = profile.Start(p.options...)
