@@ -39,6 +39,8 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 
 		go func() {
 			// Proxy all incoming bytes to the container
+			defer conn.Close()
+			defer telnetContainer.ContainerConnection.Close()
 			for {
 				select {
 				case <-rwctx.Done():
@@ -57,59 +59,47 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 			buf := make([]byte, 32*1024)
 
 			for {
-				select {
-				case <-rwctx.Done():
+				conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+				nr, err := conn.Read(buf)
+				if err != nil {
+					rwcancel()
+					log.Errorf("Error reading from connection: %s", err.Error())
 					return
-				default:
-					conn.SetReadDeadline(time.Now().Add(60 * time.Second))
-					nr, er := conn.Read(buf)
-					if er != nil {
-						rwcancel()
-						log.Errorf("Error reading from connection: %s", er.Error())
-						return
-					} else if nr == 0 {
-						continue
-					}
-					conn.SetDeadline(time.Time{})
-
-					interaction.Input = append(interaction.Input, buf[:nr]...)
-					telnetContainer.In <- buf[:nr]
+				} else if nr == 0 {
+					continue
 				}
+				conn.SetDeadline(time.Time{})
+
+				interaction.Input = append(interaction.Input, buf[:nr]...)
+				telnetContainer.In <- buf[:nr]
 			}
 		}()
 
 		buf := make([]byte, 32*1024)
 
-	readloop:
 		for {
-			select {
-			case <-rwctx.Done():
-				break readloop
-			default:
-				nr, er := telnetContainer.ContainerConnection.Read(buf)
-				if er != nil {
-					rwcancel()
-					break
-				} else if nr == 0 {
-					continue
-				}
-
-				filter := bufio.NewScanner(bytes.NewReader(buf[:nr]))
-				filter.Split(splitLines)
-				var filteredOutput string
-				for filter.Scan() {
-					line := filter.Text()
-					if !removeLine(line) {
-						filteredOutput = filteredOutput + line
-					}
-				}
-				if filter.Err() == nil {
-					filteredOutput = filteredOutput + filter.Text()
-				} else {
-					log.Errorf("Error reading lines %s ", err.Error())
-				}
-				conn.Write([]byte(filteredOutput))
+			nr, err := telnetContainer.ContainerConnection.Read(buf)
+			if err != nil {
+				break
+			} else if nr == 0 {
+				continue
 			}
+
+			filter := bufio.NewScanner(bytes.NewReader(buf[:nr]))
+			filter.Split(splitLines)
+			var filteredOutput string
+			for filter.Scan() {
+				line := filter.Text()
+				if !removeLine(line) {
+					filteredOutput = filteredOutput + line
+				}
+			}
+			if filter.Err() == nil {
+				filteredOutput = filteredOutput + filter.Text()
+			} else {
+				log.Errorf("Error reading lines %s ", err.Error())
+			}
+			conn.Write([]byte(filteredOutput))
 		}
 	} else {
 		log.Error("Session connection is nil")
