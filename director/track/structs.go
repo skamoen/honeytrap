@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/honeytrap/honeytrap/sniffer"
 	lxc "gopkg.in/lxc/go-lxc.v2"
 
 	"github.com/honeytrap/honeytrap/pushers"
@@ -34,6 +35,7 @@ type containerMeta struct {
 	idle     time.Time
 	ip       net.IP
 	idevice  string
+	sniffer  *sniffer.Sniffer
 	template string
 }
 

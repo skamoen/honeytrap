@@ -34,11 +34,11 @@ func New(options ...func(director.Director) error) (director.Director, error) {
 	}
 
 	d.activeContainers = &syncmap.Map{} // map[string]*containerMeta{}
-	//go d.HandleLxcCommands()
 	return d, nil
 }
 
 func (d *trackDirector) Dial(conn net.Conn) (net.Conn, error) {
+	log.Infof("Dialing container for %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
 	meta, err := d.getContainerMeta(conn)
 	if err != nil {
 		return nil, err
@@ -47,11 +47,15 @@ func (d *trackDirector) Dial(conn net.Conn) (net.Conn, error) {
 	meta.m.Lock()
 	defer meta.m.Unlock()
 	if !meta.c.Running() {
-		// Start the container and get network info
+		log.Debugf("Container %s not running, starting", meta.name)
 		err := meta.start()
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if meta.idevice == "" {
+		log.Debugf("Container %s network undefined, getting network", meta.name)
 		err = meta.getNetwork()
 		if err != nil {
 			return nil, err
@@ -108,6 +112,7 @@ func (d *trackDirector) getContainerMeta(conn net.Conn) (*containerMeta, error) 
 }
 
 func (d *trackDirector) cloneWithName(name string) (*lxc.Container, error) {
+	log.Debugf("Cloning new container %s from template %s", name, d.Template)
 	templateHandle, err := lxc.NewContainer(d.Template)
 	if err != nil {
 		return nil, err
@@ -129,9 +134,15 @@ func (d *trackDirector) cloneWithName(name string) (*lxc.Container, error) {
 		return nil, err
 	}
 
-	newContainerHandle.SetConfigItem("lxc.console.path", "none")
-	newContainerHandle.SetConfigItem("lxc.tty.max", "0")
-	newContainerHandle.SetConfigItem("lxc.cgroup.devices.deny", "c 5:1 rwm")
+	if err := newContainerHandle.SetConfigItem("lxc.console.path", "none"); err != nil {
+		return nil, err
+	}
+	if err := newContainerHandle.SetConfigItem("lxc.tty.max", "0"); err != nil {
+		return nil, err
+	}
+	if err := newContainerHandle.SetConfigItem("lxc.cgroup.devices.deny", "c 5:1 rwm"); err != nil {
+		return nil, err
+	}
 
 	d.eb.Send(director.ContainerClonedEvent(name, d.Template))
 	return newContainerHandle, err
@@ -142,7 +153,12 @@ func (d *trackDirector) checkExists(name string) (*lxc.Container, bool) {
 	if err != nil {
 		return nil, false
 	}
-	return containerHandle, true
+
+	if containerHandle.Defined() {
+		return containerHandle, true
+	}
+
+	return nil, false
 }
 
 func (d *trackDirector) getContainerName(conn net.Conn) string {

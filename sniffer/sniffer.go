@@ -1,5 +1,3 @@
-// +build ignore
-
 /*
 * Honeytrap
 * Copyright (C) 2016-2017 DutchSec (https://dutchsec.com/)
@@ -50,9 +48,9 @@ var log = logging.MustGetLogger("honeytrap:sniffer")
 
 // contains configuration fields.
 var (
-	timeout     = 10 * time.Millisecond
-	promisc     = false
-	offline     = false
+	timeout = 10 * time.Millisecond
+	promisc = false
+	//offline     = false
 	ErrNoSource = errors.New("No gopacket.Source")
 )
 

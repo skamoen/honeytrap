@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/honeytrap/honeytrap/director"
+	"github.com/honeytrap/honeytrap/sniffer"
 )
 
 // housekeeper handles the needed process of handling internal logic
@@ -21,15 +22,20 @@ func (c *containerMeta) housekeeper(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infof("LxcContainer %s: stopping", c.name)
+			log.Infof("Container %s: stopping", c.name)
 			c.c.Stop()
 			return
 		case <-time.After(time.Duration(c.delays.HousekeeperDelay)):
 			if time.Since(c.idle) > time.Duration(c.delays.StopDelay) {
-				log.Debugf("LxcContainer %s: idle for %s, stopping container", c.name, time.Now().Sub(c.idle).String())
+				log.Debugf("Container %s: idle for %s, stopping", c.name, time.Now().Sub(c.idle).String())
 				c.c.Stop()
 				c.d.activeContainers.Delete(c.name)
-				return
+
+				if !c.c.Running() {
+					return
+				} else {
+					log.Errorf("Container %s still running after stop call")
+				}
 			}
 		}
 	}
@@ -47,7 +53,7 @@ func (c *containerMeta) DialContainer(network string, port int) (net.Conn, error
 		}
 
 		if retries < 50 {
-			log.Debug("Waiting for container to be fully started %s (%s)\n", c.name, err.Error())
+			log.Debugf("Waiting for container to be fully started %s (%s)", c.name, err.Error())
 			time.Sleep(time.Millisecond * 200)
 			retries++
 			continue
@@ -57,6 +63,8 @@ func (c *containerMeta) DialContainer(network string, port int) (net.Conn, error
 	}
 }
 func (c *containerMeta) start() error {
+	log.Debugf("Starting Container %s")
+
 	c.idle = time.Now()
 	go c.housekeeper(context.Background())
 
@@ -118,6 +126,11 @@ func (c *containerMeta) getNetwork() error {
 	log.Debugf("Using network device %s to %s", c.idevice, c.name)
 
 	c.idle = time.Now()
+
+	c.sniffer = sniffer.New("")
+	if err := c.sniffer.Start(c.idevice); err != nil {
+		log.Errorf("Error occurred while attaching sniffer for %s to %s: %s", c.name, c.idevice, err.Error())
+	}
 
 	return nil
 }
