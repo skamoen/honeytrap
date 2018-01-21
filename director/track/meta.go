@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/honeytrap/honeytrap/director"
-	"github.com/honeytrap/honeytrap/sniffer"
 )
 
 // housekeeper handles the needed process of handling internal logic
@@ -29,6 +28,7 @@ func (c *containerMeta) housekeeper(ctx context.Context) {
 			if time.Since(c.idle) > time.Duration(c.delays.StopDelay) {
 				log.Debugf("Container %s: idle for %s, stopping", c.name, time.Now().Sub(c.idle).String())
 				c.c.Stop()
+				//data, _ := c.sniffer.Stop()
 				c.d.activeContainers.Delete(c.name)
 
 				if !c.c.Running() {
@@ -127,10 +127,10 @@ func (c *containerMeta) getNetwork() error {
 
 	c.idle = time.Now()
 
-	c.sniffer = sniffer.New("")
-	if err := c.sniffer.Start(c.idevice); err != nil {
-		log.Errorf("Error occurred while attaching sniffer for %s to %s: %s", c.name, c.idevice, err.Error())
-	}
+	/*	c.sniffer = sniffer.New("")
+		if err := c.sniffer.Start(c.idevice); err != nil {
+			log.Errorf("Error occurred while attaching sniffer for %s to %s: %s", c.name, c.idevice, err.Error())
+		}*/
 
 	return nil
 }
