@@ -90,9 +90,7 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 			var filteredOutput string
 			for filter.Scan() {
 				line := filter.Text()
-				if !removeLine(line) {
-					filteredOutput = filteredOutput + line
-				}
+				filteredOutput = filteredOutput + replaceLine(line, s.ReplaceMounts)
 			}
 			if filter.Err() == nil {
 				filteredOutput = filteredOutput + filter.Text()
@@ -111,36 +109,46 @@ func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
 		interaction.Commands = append(interaction.Commands, scanner.Text())
 	}
 	if scanner.Err() != nil {
-		log.Debugf("Error parsing commands: %s ", scanner.Err().Error())
+		log.Errorf("Error parsing commands: %s ", scanner.Err().Error())
 	}
 	return interaction, nil
 }
 
-func removeLine(line string) bool {
-	if !strings.Contains(line, "relatime") {
-		return false
+func replaceLine(line string, mounts bool) string {
+	if !mounts {
+		if !strings.Contains(line, "relatime") {
+			return line
+		}
+		if !strings.Contains(line, "0 0") {
+			return line
+		}
+		if strings.Contains(line, "lxc") {
+			return ""
+		} else if strings.Contains(line, "cgroup") {
+			return ""
+		} else if strings.Contains(line, "honeytrap") {
+			return ""
+		} else if strings.Contains(line, "pstore") {
+			return ""
+		} else if strings.Contains(line, "hugetlbfs") {
+			return ""
+		} else if strings.Contains(line, "virtual") {
+			return ""
+		} else if strings.Contains(line, "security") {
+			return ""
+		} else if strings.Contains(line, " ro,") {
+			return ""
+		}
+		return line
+	} else {
+		if strings.Contains(line, "none") {
+			return "sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0\r\nproc /proc proc rw,nosuid,nodev,noexec,relatime 0 0\r\nudev /dev devtmpfs rw,nosuid,relatime,size=243480k,nr_inodes=60870,mode=755 0 0\r\ndevpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0\r\ntmpfs /run tmpfs rw,nosuid,noexec,relatime,size=50952k,mode=755 0 0\r\n/dev/mmcblk0p2 / ext4 rw,relatime,data=ordered 0 0\r\ntmpfs /dev/shm tmpfs rw,nosuid,nodev 0 0\r\ntmpfs /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0\r\ntmpfs /sys/fs/cgroup tmpfs ro,nosuid,nodev,noexec,mode=755 0 0\r\ncgroup /sys/fs/cgroup/systemd cgroup rw,nosuid,nodev,noexec,relatime,xattr,release_agent=/lib/systemd/systemd-cgroups-agent,name=systemd 0 0\r\ncgroup /sys/fs/cgroup/net_cls cgroup rw,nosuid,nodev,noexec,relatime,net_cls 0 0\r\nmqueue /dev/mqueue mqueue rw,relatime 0 0\r\ndebugfs /sys/kernel/debug debugfs rw,relatime 0 0\r\nconfigfs /sys/kernel/config configfs rw,relatime 0 0\r\nfusectl /sys/fs/fuse/connections fusectl rw,relatime 0 0\r\n/dev/mmcblk0p1 /boot vfat rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro 0 0\r\ntmpfs /run/user/1000 tmpfs rw,nosuid,nodev,relatime,size=50952k,mode=700,uid=1000,gid=1000 0 0\r\ntmpfs /run/user/0 tmpfs rw,nosuid,nodev,relatime,size=50952k,mode=700 0 0\r\n"
+		}
+		if strings.Contains(line, " 0 0") {
+			return ""
+		}
 	}
-	if !strings.Contains(line, "0 0") {
-		return false
-	}
-	if strings.Contains(line, "lxc") {
-		return true
-	} else if strings.Contains(line, "cgroup") {
-		return true
-	} else if strings.Contains(line, "honeytrap") {
-		return true
-	} else if strings.Contains(line, "pstore") {
-		return true
-	} else if strings.Contains(line, "hugetlbfs") {
-		return true
-	} else if strings.Contains(line, "virtual") {
-		return true
-	} else if strings.Contains(line, "security") {
-		return true
-	} else if strings.Contains(line, " ro,") {
-		return true
-	}
-	return false
+	return line
 }
 
 func (s *telnetService) lowInteraction(conn net.Conn, negotiation *u.Negotiation) (*u.Interaction, error) {
@@ -279,8 +287,6 @@ func (s *telnetService) dialContainer(conn net.Conn) (net.Conn, error) {
 	// Read MOTD
 	var prompt [2048]byte
 	cConn.Read(prompt[0:])
-
-	log.Debug("Authenticated to container")
 	conn.Write(prompt[0:])
 	return cConn, nil
 }
