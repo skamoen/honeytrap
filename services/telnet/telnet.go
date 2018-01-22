@@ -106,7 +106,7 @@ func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 	session.Banner = banner
 	conn.Write([]byte(banner))
 
-	auth, err := s.authentication(conn, s.AllowedCredentials, session.Negotiation)
+	auth, root, err := s.authentication(conn, s.AllowedCredentials, session.Negotiation)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 
 	if auth.Success {
 		if s.d != nil {
-			session.Interaction, err = s.highInteraction(conn)
+			session.Interaction, err = s.highInteraction(conn, root)
 
 		} else {
 			session.Interaction, err = s.lowInteraction(conn, session.Negotiation)

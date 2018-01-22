@@ -13,12 +13,12 @@ import (
 	"github.com/op/go-logging"
 )
 
-func (s *telnetService) highInteraction(conn net.Conn) (*u.Interaction, error) {
+func (s *telnetService) highInteraction(conn net.Conn, root bool) (*u.Interaction, error) {
 	log = logging.MustGetLogger("services/telnet/interaction")
 
 	interaction := &u.Interaction{}
 
-	containerConnection, err := s.dialContainer(conn)
+	containerConnection, err := s.dialContainer(conn, root)
 	if err != nil {
 		return interaction, err
 	}
@@ -242,7 +242,7 @@ func (s *telnetService) handleLowInteractionCommand(command string) string {
 	}
 }
 
-func (s *telnetService) dialContainer(conn net.Conn) (net.Conn, error) {
+func (s *telnetService) dialContainer(conn net.Conn, root bool) (net.Conn, error) {
 	cConn, err := s.d.Dial(conn)
 	if err != nil {
 		cConn.Close()
@@ -278,7 +278,11 @@ func (s *telnetService) dialContainer(conn net.Conn) (net.Conn, error) {
 
 	// Read username prompt
 	cConn.Read(conRead[0:])
-	cConn.Write([]byte("admin\r"))
+	if root {
+		cConn.Write([]byte("root\r"))
+	} else {
+		cConn.Write([]byte("admin\r"))
+	}
 	time.Sleep(50 * time.Millisecond)
 	// Read password prompt
 	cConn.Read(conRead[0:])

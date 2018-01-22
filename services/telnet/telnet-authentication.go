@@ -11,7 +11,7 @@ import (
 	"github.com/op/go-logging"
 )
 
-func (s *telnetService) authentication(conn net.Conn, credentials []string, negotiation *u.Negotiation) (*u.Auth, error) {
+func (s *telnetService) authentication(conn net.Conn, credentials []string, negotiation *u.Negotiation) (*u.Auth, bool, error) {
 	log = logging.MustGetLogger("services/telnet/auth")
 	timeout := 30 * time.Second
 	// Save the current state, username and password
@@ -33,7 +33,7 @@ func (s *telnetService) authentication(conn net.Conn, credentials []string, nego
 			} else {
 				log.Errorf("Error occurred reading connection: %s => %s:  %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
 			}
-			return auth, err
+			return auth, false, err
 		}
 		conn.SetDeadline(time.Time{})
 
@@ -82,9 +82,12 @@ func (s *telnetService) authentication(conn net.Conn, credentials []string, nego
 
 				// Only move to interaction mode if LXC is enabled
 				if contains(credentials, currentEntry) {
-					// Return with success auth bool
 					auth.Success = true
-					return auth, nil
+
+					if currentEntry == credentials[0] {
+						return auth, true, nil
+					}
+					return auth, false, nil
 				} else {
 					state[0] = "username"
 					conn.Write([]byte("\r\nWrong password!\r\n\r\nUsername: "))
