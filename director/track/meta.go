@@ -53,7 +53,6 @@ func (c *containerMeta) DialContainer(network string, port int) (net.Conn, error
 		}
 
 		if retries < 50 {
-			log.Debugf("Waiting for container to be fully started %s (%s)", c.name, err.Error())
 			time.Sleep(time.Millisecond * 200)
 			retries++
 			continue
@@ -63,7 +62,7 @@ func (c *containerMeta) DialContainer(network string, port int) (net.Conn, error
 	}
 }
 func (c *containerMeta) start() error {
-	log.Debugf("Starting Container %s")
+	log.Debugf("Starting Container %s", c.name)
 
 	c.idle = time.Now()
 	go c.housekeeper(context.Background())
@@ -86,7 +85,7 @@ func (c *containerMeta) getNetwork() error {
 	for {
 		ip, err := c.c.IPAddress("eth0")
 		if err == nil {
-			log.Debugf("Got ip: %s", ip[0])
+			//log.Debugf("Got ip: %s", ip[0])
 			c.ip = net.ParseIP(ip[0])
 			break
 		}
@@ -122,8 +121,6 @@ func (c *containerMeta) getNetwork() error {
 	}
 
 	c.idevice = isets[0]
-
-	log.Debugf("Using network device %s to %s", c.idevice, c.name)
 
 	c.idle = time.Now()
 

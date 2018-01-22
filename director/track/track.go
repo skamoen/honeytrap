@@ -47,7 +47,6 @@ func (d *trackDirector) Dial(conn net.Conn) (net.Conn, error) {
 	meta.m.Lock()
 	defer meta.m.Unlock()
 	if !meta.c.Running() {
-		log.Debugf("Container %s not running, starting", meta.name)
 		err := meta.start()
 		if err != nil {
 			return nil, err
@@ -55,7 +54,6 @@ func (d *trackDirector) Dial(conn net.Conn) (net.Conn, error) {
 	}
 
 	if meta.idevice == "" {
-		log.Debugf("Container %s network undefined, getting network", meta.name)
 		err = meta.getNetwork()
 		if err != nil {
 			return nil, err
