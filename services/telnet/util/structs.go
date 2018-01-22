@@ -9,6 +9,7 @@ import (
 )
 
 type Session struct {
+	Banner      string
 	Negotiation *Negotiation
 	Auth        *Auth
 	Interaction *Interaction
@@ -22,6 +23,7 @@ type Session struct {
 
 func (s *Session) ToMap() map[string]interface{} {
 	return map[string]interface{}{
+		"banner":      s.Banner,
 		"negotiation": s.Negotiation.ToMap(),
 		"credentials": s.Auth.ToMap(),
 		"interaction": s.Interaction.ToMap(),

@@ -31,11 +31,12 @@
 package telnet
 
 import (
-
 	// Lazy import for util structs
 
 	"context"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/op/go-logging"
@@ -70,6 +71,9 @@ type telnetService struct {
 	AllowedCredentials []string `toml:"credentials"`
 	col                *collector.Collector
 	d                  director.Director
+
+	Banners       []string `toml:"banners"`
+	ReplaceMounts bool     `toml:"replace-mounts"`
 }
 
 func (s *telnetService) SetDirector(d director.Director) {
@@ -80,9 +84,6 @@ func (s *telnetService) SetChannel(c pushers.Channel) {
 }
 
 func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
-	// Declare variables used
-	banner := []byte("\nUser Access Verification\r\nUsername:")
-
 	// Send the connection to the collector
 	session := s.col.RegisterConnection(conn)
 
@@ -100,8 +101,10 @@ func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 	session.Negotiation = negotiation
 
 	// Send the banner to the remote host
-	log.Debugf("Sending banner %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
-	conn.Write(banner)
+	//log.Debugf("Sending banner %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
+	banner := s.selectBanner(conn.LocalAddr())
+	session.Banner = banner
+	conn.Write([]byte(banner))
 
 	auth, err := s.authentication(conn, s.AllowedCredentials, session.Negotiation)
 	if err != nil {
@@ -124,6 +127,35 @@ func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 		}
 	}
 	return nil
+}
+func (s *telnetService) selectBanner(addr net.Addr) string {
+	ip, _, _ := net.SplitHostPort(addr.String())
+	a := strings.Split(ip, ".")
+	n, err := strconv.ParseInt(a[len(a)-1], 10, 64)
+	if err != nil {
+		return s.Banners[0]
+	}
+	l := len(s.Banners)
+
+	if n < 32 {
+		return s.Banners[0]
+	} else if n < 64 && l >= 2 {
+		return s.Banners[1]
+	} else if n < 96 && l >= 3 {
+		return s.Banners[2]
+	} else if n < 128 && l >= 4 {
+		return s.Banners[3]
+	} else if n < 160 && l >= 5 {
+		return s.Banners[4]
+	} else if n < 192 && l >= 6 {
+		return s.Banners[5]
+	} else if n < 224 && l >= 7 {
+		return s.Banners[6]
+	} else if n < 256 && l >= 8 {
+		return s.Banners[7]
+	}
+
+	return s.Banners[0]
 }
 
 func contains(s []string, e string) bool {
