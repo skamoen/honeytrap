@@ -104,7 +104,7 @@ func (hc ElasticSearchBackend) run() {
 				Doc(doc),
 			)
 
-			if bulk.NumberOfActions() < 10 {
+			if bulk.NumberOfActions() < 100 {
 				continue
 			}
 		case <-time.After(time.Second * 10):
