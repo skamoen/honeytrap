@@ -64,7 +64,7 @@ func New(options ...func(pushers.Channel) error) (pushers.Channel, error) {
 		FileConfig: FileConfig{
 			MaxSize: defaultMaxSize,
 		},
-		request: make(chan map[string]interface{}),
+		request: make(chan map[string]interface{}, 1024),
 		closer:  make(chan struct{}),
 	}
 
