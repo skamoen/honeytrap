@@ -94,11 +94,11 @@ func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 
 	// Negotiate linemode and echo. Results will be stored in the session.
 	negotiation, err := s.negotiateTelnet(conn)
+	negotiation.Session = session
+	session.Negotiation = negotiation
 	if err != nil {
 		return err
 	}
-	negotiation.Session = session
-	session.Negotiation = negotiation
 
 	// Send the banner to the remote host
 	//log.Debugf("Sending banner %s => %s", conn.RemoteAddr().String(), conn.LocalAddr().String())
@@ -107,11 +107,11 @@ func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 	conn.Write([]byte(banner))
 
 	auth, root, err := s.authentication(conn, s.AllowedCredentials, session.Negotiation)
+	auth.Session = session
+	session.Auth = auth
 	if err != nil {
 		return err
 	}
-	auth.Session = session
-	session.Auth = auth
 
 	if auth.Success {
 		if s.d != nil {
