@@ -61,7 +61,7 @@ type ElasticSearchBackend struct {
 }
 
 func New(options ...func(pushers.Channel) error) (pushers.Channel, error) {
-	ch := make(chan map[string]interface{}, 100)
+	ch := make(chan map[string]interface{}, 1000)
 
 	c := ElasticSearchBackend{
 		ch: ch,
