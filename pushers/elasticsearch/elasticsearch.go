@@ -32,17 +32,16 @@ package elasticsearch
 
 import (
 	"context"
-
 	"time"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 
-	elastic "gopkg.in/olivere/elastic.v5"
+	"github.com/olivere/elastic"
 
 	"github.com/honeytrap/honeytrap/event"
 	"github.com/honeytrap/honeytrap/pushers"
 
-	logging "github.com/op/go-logging"
+	"github.com/op/go-logging"
 )
 
 var (

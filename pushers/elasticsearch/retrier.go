@@ -33,9 +33,8 @@ package elasticsearch
 import (
 	"context"
 	"errors"
-	"syscall"
-
 	"net/http"
+	"syscall"
 	"time"
 )
 
