@@ -13,12 +13,12 @@ import (
 	"github.com/op/go-logging"
 )
 
-func (s *telnetService) highInteraction(conn net.Conn, root bool) (*u.Interaction, error) {
+func (s *telnetService) highInteraction(conn net.Conn, negotiation *u.Negotiation, auth *u.Auth) (*u.Interaction, error) {
 	log = logging.MustGetLogger("services/telnet/interaction")
 
 	interaction := &u.Interaction{}
 
-	containerConnection, err := s.dialContainer(conn, root)
+	containerConnection, err := s.dialContainer(conn, negotiation, auth)
 	if err != nil {
 		return interaction, err
 	}
@@ -242,7 +242,7 @@ func (s *telnetService) handleLowInteractionCommand(command string) string {
 	}
 }
 
-func (s *telnetService) dialContainer(conn net.Conn, root bool) (net.Conn, error) {
+func (s *telnetService) dialContainer(conn net.Conn, negotiation *u.Negotiation, auth *u.Auth) (net.Conn, error) {
 	cConn, err := s.d.Dial(conn)
 	if err != nil {
 		cConn.Close()
@@ -278,7 +278,7 @@ func (s *telnetService) dialContainer(conn net.Conn, root bool) (net.Conn, error
 
 	// Read username prompt
 	cConn.Read(conRead[0:])
-	if root {
+	if auth.Root {
 		cConn.Write([]byte("root\r"))
 	} else {
 		cConn.Write([]byte("admin\r"))
@@ -288,9 +288,18 @@ func (s *telnetService) dialContainer(conn net.Conn, root bool) (net.Conn, error
 	cConn.Read(conRead[0:])
 	cConn.Write([]byte("honey\r"))
 	time.Sleep(100 * time.Millisecond)
+
 	// Read MOTD
 	var prompt [2048]byte
 	cConn.Read(prompt[0:])
+
+	if !negotiation.ValueEcho {
+		// Disable terminal echo when negotiated. Telnetd doesn't support this properly
+		cConn.Write([]byte("stty -echo\r"))
+		time.Sleep(50 * time.Millisecond)
+		cConn.Read(conRead[0:])
+	}
+
 	conn.Write(prompt[0:])
 	return cConn, nil
 }

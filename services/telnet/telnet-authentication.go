@@ -11,7 +11,7 @@ import (
 	"github.com/op/go-logging"
 )
 
-func (s *telnetService) authentication(conn net.Conn, credentials []string, negotiation *u.Negotiation) (*u.Auth, bool, error) {
+func (s *telnetService) authentication(conn net.Conn, credentials []string, negotiation *u.Negotiation) (*u.Auth, error) {
 	log = logging.MustGetLogger("services/telnet/auth")
 	timeout := 30 * time.Second
 	// Save the current state, username and password
@@ -33,7 +33,7 @@ func (s *telnetService) authentication(conn net.Conn, credentials []string, nego
 			} else {
 				log.Errorf("Error occurred reading connection: %s => %s:  %s", conn.RemoteAddr().String(), conn.LocalAddr().String(), err.Error())
 			}
-			return auth, false, err
+			return auth, err
 		}
 		conn.SetDeadline(time.Time{})
 
@@ -85,9 +85,10 @@ func (s *telnetService) authentication(conn net.Conn, credentials []string, nego
 					auth.Success = true
 
 					if currentEntry == credentials[0] {
-						return auth, true, nil
+						auth.Root = true
+						return auth, nil
 					}
-					return auth, false, nil
+					return auth, nil
 				} else {
 					state[0] = "username"
 					conn.Write([]byte("\r\nWrong password!\r\n\r\nUsername: "))

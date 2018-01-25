@@ -78,6 +78,7 @@ type Auth struct {
 	InputTimes                    []int64
 	Usernames, Passwords, Entries []string
 	Success                       bool
+	Root                          bool
 }
 
 func (c *Auth) ToMap() map[string]interface{} {
@@ -88,6 +89,7 @@ func (c *Auth) ToMap() map[string]interface{} {
 		"passwords":   c.Passwords,
 		"entries":     c.Entries,
 		"success":     c.Success,
+		"root":        c.Root,
 	}
 }
 
