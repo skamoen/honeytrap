@@ -19,17 +19,19 @@ type Session struct {
 	LocalAddr   net.Addr
 	AgentAddr   agent.AgentAddresser
 	Raw         bool
+	ServiceName string
 }
 
 func (s *Session) ToMap() map[string]interface{} {
 	return map[string]interface{}{
-		"banner":      s.Banner,
-		"negotiation": s.Negotiation.ToMap(),
-		"credentials": s.Auth.ToMap(),
-		"interaction": s.Interaction.ToMap(),
-		"start_time":  s.StartTime,
-		"duration":    s.Duration,
-		"raw":         s.Raw,
+		"banner":       s.Banner,
+		"negotiation":  s.Negotiation.ToMap(),
+		"credentials":  s.Auth.ToMap(),
+		"interaction":  s.Interaction.ToMap(),
+		"start_time":   s.StartTime,
+		"duration":     s.Duration,
+		"raw":          s.Raw,
+		"service_name": s.ServiceName,
 	}
 }
 

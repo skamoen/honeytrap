@@ -74,6 +74,7 @@ type telnetService struct {
 
 	Banners       []string `toml:"banners"`
 	ReplaceMounts bool     `toml:"replace-mounts"`
+	Name          string   `toml:"name"`
 }
 
 func (s *telnetService) SetDirector(d director.Director) {
@@ -86,6 +87,7 @@ func (s *telnetService) SetChannel(c pushers.Channel) {
 func (s *telnetService) Handle(ctx context.Context, conn net.Conn) error {
 	// Send the connection to the collector
 	session := s.col.RegisterConnection(conn)
+	session.ServiceName = s.Name
 
 	// When session ends, close the connections and log everything.
 	defer s.logSession(session)
