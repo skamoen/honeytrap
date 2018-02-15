@@ -35,15 +35,19 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"runtime"
 	"strings"
 	"time"
+
+	isatty "github.com/mattn/go-isatty"
 
 	"github.com/BurntSushi/toml"
 	"github.com/fatih/color"
 
 	"github.com/honeytrap/honeytrap/cmd"
 	"github.com/honeytrap/honeytrap/config"
+	"github.com/honeytrap/honeytrap/web"
 
 	"github.com/honeytrap/honeytrap/director"
 	_ "github.com/honeytrap/honeytrap/director/forward"
@@ -56,7 +60,9 @@ import (
 	"github.com/honeytrap/honeytrap/services"
 	_ "github.com/honeytrap/honeytrap/services/elasticsearch"
 	_ "github.com/honeytrap/honeytrap/services/ethereum"
+	_ "github.com/honeytrap/honeytrap/services/ftp"
 	_ "github.com/honeytrap/honeytrap/services/ipp"
+	_ "github.com/honeytrap/honeytrap/services/redis"
 	_ "github.com/honeytrap/honeytrap/services/ssh"
 	_ "github.com/honeytrap/honeytrap/services/telnet"
 	_ "github.com/honeytrap/honeytrap/services/vnc"
@@ -73,8 +79,6 @@ import (
 
 	"github.com/honeytrap/honeytrap/event"
 	"github.com/honeytrap/honeytrap/server/profiler"
-
-	web "github.com/honeytrap/honeytrap/web"
 
 	_ "github.com/honeytrap/honeytrap/pushers/console"       // Registers stdout backend.
 	_ "github.com/honeytrap/honeytrap/pushers/elasticsearch" // Registers elasticsearch backend.
@@ -169,10 +173,13 @@ func (hc *Honeytrap) findService(conn net.Conn) *ServiceMap {
 	}
 
 	log.Debug("Couldn't match on addr, peeking connection %s => %s", conn.RemoteAddr(), conn.LocalAddr())
+
 	// wrap connection in a connection with deadlines
 	conn = TimeoutConn(conn, time.Second*30)
 	pc := PeekConnection(conn)
+
 	buffer := make([]byte, 1024)
+
 	n, err := pc.Peek(buffer)
 	if err == io.EOF {
 		return nil
@@ -233,9 +240,20 @@ func ToAddr(port string) net.Addr {
 	}
 }
 
+func IsTerminal(f *os.File) bool {
+	if isatty.IsTerminal(f.Fd()) {
+		return true
+	} else if isatty.IsCygwinTerminal(f.Fd()) {
+		return true
+	}
+
+	return false
+}
+
 // Run will start honeytrap
 func (hc *Honeytrap) Run(ctx context.Context) {
-	fmt.Println(color.YellowString(`
+	if IsTerminal(os.Stdout) {
+		fmt.Println(color.YellowString(`
  _   _                       _____                %c
 | | | | ___  _ __   ___ _   |_   _| __ __ _ _ __
 | |_| |/ _ \| '_ \ / _ \ | | || || '__/ _' | '_ \
@@ -243,19 +261,27 @@ func (hc *Honeytrap) Run(ctx context.Context) {
 |_| |_|\___/|_| |_|\___|\__, ||_||_|  \__,_| .__/
                         |___/              |_|
 `, 127855))
+	}
 
 	fmt.Println(color.YellowString("Honeytrap starting (%s)...", hc.token))
 	fmt.Println(color.YellowString("Version: %s (%s)", cmd.Version, cmd.ShortCommitID))
+
+	log.Debugf("Using datadir: %s", hc.dataDir)
 
 	go hc.heartbeat()
 
 	hc.profiler.Start()
 
-	w := web.New(
+	w, err := web.New(
 		web.WithEventBus(hc.bus),
+		web.WithDataDir(hc.dataDir),
+		web.WithConfig(hc.config.Web),
 	)
+	if err != nil {
+		log.Error("Error parsing configuration of web: %s", err.Error())
+	}
 
-	go w.ListenAndServe()
+	w.Start()
 
 	channels := map[string]pushers.Channel{}
 	// sane defaults!
@@ -359,8 +385,7 @@ func (hc *Honeytrap) Run(ctx context.Context) {
 		Type string `toml:"type"`
 	}{}
 
-	err := toml.PrimitiveDecode(hc.config.Listener, &x)
-	if err != nil {
+	if err := toml.PrimitiveDecode(hc.config.Listener, &x); err != nil {
 		log.Error("Error parsing configuration of listener: %s", err.Error())
 		return
 	}
@@ -398,7 +423,7 @@ func (hc *Honeytrap) Run(ctx context.Context) {
 		} else {
 			a.AddAddress(addr)
 
-			log.Infof("Configured generic port %s/%s.", addr.Network(), addr.String())
+			log.Infof("Configured generic port %s/%s", addr.Network(), addr.String())
 		}
 	}
 
@@ -443,7 +468,7 @@ func (hc *Honeytrap) Run(ctx context.Context) {
 		} else {
 			a.AddAddress(addr)
 
-			log.Infof("Configured service port %s/%s.", addr.String())
+			log.Infof("Configured service port %s/%s", addr.Network(), addr.String())
 		}
 
 		matcher := noMatcher
@@ -464,7 +489,7 @@ func (hc *Honeytrap) Run(ctx context.Context) {
 		log.Infof("Configured service %s (%s)", x.Type, key)
 	}
 
-	if err := l.Start(); err != nil {
+	if err := l.Start(ctx); err != nil {
 		fmt.Println(color.RedString("Error starting listener: %s", err.Error()))
 	}
 

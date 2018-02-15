@@ -125,19 +125,13 @@
   branch = "master"
   name = "github.com/honeytrap/honeytrap-web"
   packages = ["."]
-  revision = "40a3ac1628261e59b1dcb1fddd650e3040e87165"
+  revision = "d4db75aa6efa361c39438fc9bc0538661905d587"
 
 [[projects]]
   branch = "master"
   name = "github.com/honeytrap/protocol"
   packages = ["."]
   revision = "b1ce3685e6dbd9d813b76ee47ca2ce08de8aa530"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/mailru/easyjson"
-  packages = [".","buffer","jlexer","jwriter"]
-  revision = "32fa128f234d041f196a9f3e0fea5ac9772c08e1"
 
 [[projects]]
   name = "github.com/mattn/go-colorable"
@@ -150,12 +144,6 @@
   packages = ["."]
   revision = "0360b2af4f38e8d38c7fce2a9f4e702702d73a39"
   version = "v0.0.3"
-
-[[projects]]
-  name = "github.com/mattn/go-sqlite3"
-  packages = ["."]
-  revision = "5160b48509cf5c877bc22c11c373f8c7738cdb38"
-  version = "v1.3.0"
 
 [[projects]]
   branch = "master"
@@ -180,6 +168,12 @@
   packages = ["."]
   revision = "b2cb9fa56473e98db8caba80237377e83fe44db5"
   version = "v1"
+
+[[projects]]
+  name = "github.com/oschwald/maxminddb-golang"
+  packages = ["."]
+  revision = "8727e98aa1b91610eb184ed1ab615943b8d9deb0"
+  version = "v1.2.1"
 
 [[projects]]
   name = "github.com/pierrec/lz4"
@@ -274,6 +268,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "20bdd005e4216ea7807d39e7b8d9b6e8354dfe9f4dc1f77afdc0bfb3bad418ee"
+  inputs-digest = "ed0c11ea26c02d3dff4e7968eb1edaef2696ad4f9f63d43096684e24de3c8477"
   solver-name = "gps-cdcl"
   solver-version = 1
