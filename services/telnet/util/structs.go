@@ -19,17 +19,19 @@ type Session struct {
 	LocalAddr   net.Addr
 	AgentAddr   agent.AgentAddresser
 	Raw         bool
+	ServiceName string
 }
 
 func (s *Session) ToMap() map[string]interface{} {
 	return map[string]interface{}{
-		"banner":      s.Banner,
-		"negotiation": s.Negotiation.ToMap(),
-		"credentials": s.Auth.ToMap(),
-		"interaction": s.Interaction.ToMap(),
-		"start_time":  s.StartTime,
-		"duration":    s.Duration,
-		"raw":         s.Raw,
+		"banner":       s.Banner,
+		"negotiation":  s.Negotiation.ToMap(),
+		"credentials":  s.Auth.ToMap(),
+		"interaction":  s.Interaction.ToMap(),
+		"start_time":   s.StartTime,
+		"duration":     s.Duration,
+		"raw":          s.Raw,
+		"service_name": s.ServiceName,
 	}
 }
 
@@ -78,6 +80,7 @@ type Auth struct {
 	InputTimes                    []int64
 	Usernames, Passwords, Entries []string
 	Success                       bool
+	Root                          bool
 }
 
 func (c *Auth) ToMap() map[string]interface{} {
@@ -88,6 +91,7 @@ func (c *Auth) ToMap() map[string]interface{} {
 		"passwords":   c.Passwords,
 		"entries":     c.Entries,
 		"success":     c.Success,
+		"root":        c.Root,
 	}
 }
 
