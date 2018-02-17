@@ -47,9 +47,9 @@ import (
 
 	assetfs "github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/websocket"
-	assets "github.com/honeytrap/honeytrap-web"
 	logging "github.com/op/go-logging"
 	maxminddb "github.com/oschwald/maxminddb-golang"
+	assets "github.com/skamoen/honeytrap-web"
 )
 
 var log = logging.MustGetLogger("web")
@@ -176,10 +176,10 @@ func (web *web) Start() {
 	}
 
 	sh := http.FileServer(&assetfs.AssetFS{
-		Asset:     assets.Asset,
-		AssetDir:  assets.AssetDir,
-		AssetInfo: assets.AssetInfo,
-		Prefix:    assets.Prefix,
+		Asset:    assets.Asset,
+		AssetDir: assets.AssetDir,
+		//AssetInfo: assets.AssetInfo,
+		Prefix: assets.Prefix,
 	})
 
 	handler.HandleFunc("/ws", web.ServeWS)
@@ -383,7 +383,17 @@ func (web *web) ServeWS(w http.ResponseWriter, r *http.Request) {
 		ShortCommitID: cmd.ShortCommitID,
 	})
 
-	c.send <- Data("events", web.events)
+	filteredEvents := NewSafeArray()
+	rAddr, _, _ := net.SplitHostPort(r.RemoteAddr)
+	for _, e := range web.events.array {
+		event := e.(event.Event)
+		if event.Get("destination-ip") == rAddr || event.Get("agent-ip") == rAddr {
+			filteredEvents.Append(event)
+			continue
+		}
+	}
+
+	c.send <- Data("events", filteredEvents)
 	c.send <- Data("hot_countries", web.hotCountries)
 
 	go c.writePump()
