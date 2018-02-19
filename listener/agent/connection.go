@@ -73,6 +73,22 @@ func (ac *agentConnection) AgentToken() string {
 	return ac.agentToken
 }
 
+func (dc *agentConnection) receive(data []byte) {
+	dc.m.Lock()
+	defer dc.m.Unlock()
+
+	if dc.closed {
+		return
+	}
+
+	dc.buff = append(dc.buff, data...)
+
+	select {
+	case dc.in <- []byte{}: // v.Payload {
+	default:
+	}
+}
+
 func (dc *agentConnection) Read(b []byte) (int, error) {
 	if len(dc.buff) != 0 {
 		dc.m.Lock()
@@ -153,7 +169,6 @@ func (dc *agentConnection) Close() error {
 	}
 
 	dc.out <- p
-	// should we close out also?
 
 	dc.closed = true
 	close(dc.in)
