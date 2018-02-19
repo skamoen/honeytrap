@@ -253,7 +253,23 @@ func (web *web) run() {
 			}
 		case msg := <-web.messageCh:
 			for c := range web.connections {
-				c.send <- msg
+				rAddr, _, _ := net.SplitHostPort(c.ws.RemoteAddr().String())
+				switch t := msg.(type) {
+				case event.Event:
+					if t.Get("destination-ip") == rAddr || t.Get("agent-ip") == rAddr {
+						log.Debugf("Selected event for RemoteAddr %s", c.ws.RemoteAddr().String())
+						c.send <- msg
+					}
+				case []event.Event:
+					hotCountries := NewSafeArray()
+					for _, e := range t {
+						if e.Get("destination-ip") == rAddr || e.Get("agent-ip") == rAddr {
+							log.Debugf("Selected country for RemoteAddr %s", c.ws.RemoteAddr().String())
+							hotCountries.Append(e)
+						}
+					}
+					c.send <- Data("hot_countries", hotCountries)
+				}
 			}
 		}
 	}
