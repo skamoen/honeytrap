@@ -254,11 +254,15 @@ func (web *web) run() {
 		case msg := <-web.messageCh:
 			for c := range web.connections {
 				rAddr, _, _ := net.SplitHostPort(c.ws.RemoteAddr().String())
+				log.Debugf("RemoteIP is %s", rAddr)
 				message, ok := msg.(Message)
 				if ok {
 					switch t := message.Data.(type) {
 					case event.Event:
-						if t.Get("destination-ip") == rAddr || t.Get("agent-ip") == rAddr {
+						dstIP := t.Get("destination-ip")
+						agentIP := t.Get("agent-ip")
+						log.Debugf("Processing event with dstIP: %s and agentIP %s", dstIP, agentIP)
+						if dstIP == rAddr || agentIP == rAddr {
 							log.Debugf("Selected event for RemoteAddr %s", c.ws.RemoteAddr().String())
 							c.send <- msg
 						}
