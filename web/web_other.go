@@ -45,10 +45,10 @@ import (
 	"github.com/honeytrap/honeytrap/event"
 	"github.com/honeytrap/honeytrap/pushers/eventbus"
 
-	assetfs "github.com/elazarl/go-bindata-assetfs"
+	"github.com/elazarl/go-bindata-assetfs"
 	"github.com/gorilla/websocket"
-	logging "github.com/op/go-logging"
-	maxminddb "github.com/oschwald/maxminddb-golang"
+	"github.com/op/go-logging"
+	"github.com/oschwald/maxminddb-golang"
 	assets "github.com/skamoen/honeytrap-web"
 )
 
@@ -253,7 +253,7 @@ func (web *web) run() {
 			}
 		case msg := <-web.messageCh:
 			for c := range web.connections {
-				rAddr, _, _ := net.SplitHostPort(c.ws.RemoteAddr().String())
+				rAddr := c.remoteAddr
 				log.Debugf("RemoteIP is %s", rAddr)
 				message, ok := msg.(Message)
 				if ok {
@@ -389,6 +389,14 @@ func (web *web) ServeWS(w http.ResponseWriter, r *http.Request) {
 		web:  web,
 		send: make(chan json.Marshaler, 100),
 	}
+
+	forwardedHeader := r.Header.Get("X-Forwarded-For")
+	if forwardedHeader != "" {
+		c.remoteAddr = forwardedHeader
+	} else {
+		c.remoteAddr = r.RemoteAddr
+	}
+	log.Debugf("RemoteAddr is %s", c.remoteAddr)
 
 	log.Info("Connection upgraded.")
 	defer func() {

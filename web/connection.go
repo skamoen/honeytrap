@@ -53,6 +53,8 @@ const (
 )
 
 type connection struct {
+	remoteAddr string
+
 	ws *websocket.Conn
 
 	web *web
