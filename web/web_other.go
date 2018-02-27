@@ -264,14 +264,7 @@ func (web *web) run() {
 							c.send <- msg
 						}
 					case *SafeArray:
-						hotCountries := NewSafeArray()
-						for _, e := range t.array {
-							if e.(*event.Event).Get("destination-ip") == rAddr || e.(*event.Event).Get("agent-ip") == rAddr {
-								log.Debugf("Selected country for RemoteAddr %s", c.ws.RemoteAddr().String())
-								hotCountries.Append(e)
-							}
-						}
-						c.send <- Data("hot_countries", hotCountries)
+						c.send <- msg
 					default:
 						log.Debugf("Unknown type %T", t)
 					}
