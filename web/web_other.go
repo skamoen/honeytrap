@@ -255,7 +255,7 @@ func (web *web) run() {
 			for c := range web.connections {
 				rAddr := c.remoteAddr
 				log.Debugf("RemoteIP is %s", rAddr)
-				message, ok := msg.(Message)
+				message, ok := msg.(*Message)
 				if ok {
 					switch t := message.Data.(type) {
 					case event.Event:
@@ -278,6 +278,8 @@ func (web *web) run() {
 					default:
 						log.Debugf("Unknown type %T", t)
 					}
+				} else {
+					log.Errorf("Event is not a message pointer")
 				}
 			}
 		}
