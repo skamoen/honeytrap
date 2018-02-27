@@ -254,22 +254,19 @@ func (web *web) run() {
 		case msg := <-web.messageCh:
 			for c := range web.connections {
 				rAddr := c.remoteAddr
-				log.Debugf("RemoteIP is %s", rAddr)
 				message, ok := msg.(*Message)
 				if ok {
 					switch t := message.Data.(type) {
 					case event.Event:
 						dstIP := t.Get("destination-ip")
 						agentIP := t.Get("agent-ip")
-						log.Debugf("Processing event with dstIP: %s and agentIP %s", dstIP, agentIP)
 						if dstIP == rAddr || agentIP == rAddr {
-							log.Debugf("Selected event for RemoteAddr %s", c.ws.RemoteAddr().String())
 							c.send <- msg
 						}
-					case []event.Event:
+					case *SafeArray:
 						hotCountries := NewSafeArray()
-						for _, e := range t {
-							if e.Get("destination-ip") == rAddr || e.Get("agent-ip") == rAddr {
+						for _, e := range t.array {
+							if e.(*event.Event).Get("destination-ip") == rAddr || e.(*event.Event).Get("agent-ip") == rAddr {
 								log.Debugf("Selected country for RemoteAddr %s", c.ws.RemoteAddr().String())
 								hotCountries.Append(e)
 							}
