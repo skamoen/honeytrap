@@ -16,7 +16,6 @@ import (
 const (
 	testIndexName  = "elastic-test"
 	testIndexName2 = "elastic-test2"
-	testIndexName3 = "elastic-test3"
 	testMapping    = `
 {
 	"settings":{
@@ -24,7 +23,12 @@ const (
 		"number_of_replicas":0
 	},
 	"mappings":{
-		"doc":{
+		"_default_": {
+			"_all": {
+				"enabled": true
+			}
+		},
+		"tweet":{
 			"properties":{
 				"user":{
 					"type":"keyword"
@@ -44,26 +48,52 @@ const (
 					"type":"completion",
 					"contexts":[
 						{
-							"name":"user_name",
-							"type":"category"
+							"name": "user_name",
+							"type": "category"
 						}
 					]
 				}
 			}
-		}
-	}
-}
-`
-
-	testNoSourceIndexName = "elastic-nosource-test"
-	testNoSourceMapping   = `
-{
-	"settings":{
-		"number_of_shards":1,
-		"number_of_replicas":0
-	},
-	"mappings":{
-		"doc":{
+		},
+		"comment":{
+			"_parent": {
+				"type":	"tweet"
+			}
+		},
+		"order":{
+			"properties":{
+				"article":{
+					"type":"text"
+				},
+				"manufacturer":{
+					"type":"keyword"
+				},
+				"price":{
+					"type":"float"
+				},
+				"time":{
+					"type":"date",
+					"format": "YYYY-MM-dd"
+				}
+			}
+		},
+		"doctype":{
+			"properties":{
+				"message":{
+					"type":"text",
+					"store": true,
+					"fielddata": true
+				}
+			}
+		},
+		"queries":{
+			"properties": {
+				"query": {
+					"type":	"percolator"
+				}
+			}
+		},
+		"tweet-nosource":{
 			"_source": {
 				"enabled": false
 			},
@@ -96,107 +126,6 @@ const (
 	}
 }
 `
-
-	testJoinIndex   = "elastic-joins"
-	testJoinMapping = `
-	{
-		"settings":{
-			"number_of_shards":1,
-			"number_of_replicas":0
-		},
-		"mappings":{
-			"doc":{
-				"properties":{
-					"message":{
-						"type":"text"
-					},
-					"my_join_field": {
-						"type": "join",
-						"relations": {
-							"question": "answer"
-						}
-					}
-				}
-			}
-		}
-	}
-`
-
-	testOrderIndex   = "elastic-orders"
-	testOrderMapping = `
-{
-	"settings":{
-		"number_of_shards":1,
-		"number_of_replicas":0
-	},
-	"mappings":{
-		"doc":{
-			"properties":{
-				"article":{
-					"type":"text"
-				},
-				"manufacturer":{
-					"type":"keyword"
-				},
-				"price":{
-					"type":"float"
-				},
-				"time":{
-					"type":"date",
-					"format": "YYYY-MM-dd"
-				}
-			}
-		}
-	}
-}
-`
-
-	/*
-	   	testDoctypeIndex   = "elastic-doctypes"
-	   	testDoctypeMapping = `
-	   {
-	   	"settings":{
-	   		"number_of_shards":1,
-	   		"number_of_replicas":0
-	   	},
-	   	"mappings":{
-	   		"doc":{
-	   			"properties":{
-	   				"message":{
-	   					"type":"text",
-	   					"store": true,
-	   					"fielddata": true
-	   				}
-	   			}
-	   		}
-	   	}
-	   }
-	   `
-	*/
-
-	testQueryIndex   = "elastic-queries"
-	testQueryMapping = `
-{
-	"settings":{
-		"number_of_shards":1,
-		"number_of_replicas":0
-	},
-	"mappings":{
-		"doc":{
-			"properties":{
-				"message":{
-					"type":"text",
-					"store": true,
-					"fielddata": true
-				},
-				"query": {
-					"type":	"percolator"
-				}
-			}
-		}
-	}
-}
-`
 )
 
 type tweet struct {
@@ -222,16 +151,6 @@ type comment struct {
 
 func (c comment) String() string {
 	return fmt.Sprintf("comment{User:%q,Comment:%q}", c.User, c.Comment)
-}
-
-type joinDoc struct {
-	Message   string      `json:"message"`
-	JoinField interface{} `json:"my_join_field,omitempty"`
-}
-
-type joinField struct {
-	Name   string `json:"name"`
-	Parent string `json:"parent,omitempty"`
 }
 
 type order struct {
@@ -284,12 +203,6 @@ func setupTestClient(t logger, options ...ClientOptionFunc) (client *Client) {
 
 	client.DeleteIndex(testIndexName).Do(context.TODO())
 	client.DeleteIndex(testIndexName2).Do(context.TODO())
-	client.DeleteIndex(testIndexName3).Do(context.TODO())
-	client.DeleteIndex(testOrderIndex).Do(context.TODO())
-	client.DeleteIndex(testNoSourceIndexName).Do(context.TODO())
-	//client.DeleteIndex(testDoctypeIndex).Do(context.TODO())
-	client.DeleteIndex(testQueryIndex).Do(context.TODO())
-	client.DeleteIndex(testJoinIndex).Do(context.TODO())
 
 	return client
 }
@@ -315,24 +228,6 @@ func setupTestClientAndCreateIndex(t logger, options ...ClientOptionFunc) *Clien
 		t.Errorf("expected result to be != nil; got: %v", createIndex2)
 	}
 
-	// Create no source index
-	createNoSourceIndex, err := client.CreateIndex(testNoSourceIndexName).Body(testNoSourceMapping).Do(context.TODO())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if createNoSourceIndex == nil {
-		t.Errorf("expected result to be != nil; got: %v", createNoSourceIndex)
-	}
-
-	// Create order index
-	createOrderIndex, err := client.CreateIndex(testOrderIndex).Body(testOrderMapping).Do(context.TODO())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if createOrderIndex == nil {
-		t.Errorf("expected result to be != nil; got: %v", createOrderIndex)
-	}
-
 	return client
 }
 
@@ -347,26 +242,24 @@ func setupTestClientAndCreateIndexAndAddDocs(t logger, options ...ClientOptionFu
 	tweet1 := tweet{User: "olivere", Message: "Welcome to Golang and Elasticsearch."}
 	tweet2 := tweet{User: "olivere", Message: "Another unrelated topic."}
 	tweet3 := tweet{User: "sandrae", Message: "Cycling is fun."}
-	//comment1 := comment{User: "nico", Comment: "You bet."}
+	comment1 := comment{User: "nico", Comment: "You bet."}
 
-	_, err := client.Index().Index(testIndexName).Type("doc").Id("1").BodyJson(&tweet1).Do(context.TODO())
+	_, err := client.Index().Index(testIndexName).Type("tweet").Id("1").BodyJson(&tweet1).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.Index().Index(testIndexName).Type("doc").Id("2").BodyJson(&tweet2).Do(context.TODO())
+	_, err = client.Index().Index(testIndexName).Type("tweet").Id("2").BodyJson(&tweet2).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.Index().Index(testIndexName).Type("doc").Id("3").Routing("someroutingkey").BodyJson(&tweet3).Do(context.TODO())
+	_, err = client.Index().Index(testIndexName).Type("tweet").Id("3").Routing("someroutingkey").BodyJson(&tweet3).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
-	/*
-		_, err = client.Index().Index(testIndexName).Type("comment").Id("1").Parent("3").BodyJson(&comment1).Do(context.TODO())
-		if err != nil {
-			t.Fatal(err)
-		}
-	*/
+	_, err = client.Index().Index(testIndexName).Type("comment").Id("1").Parent("3").BodyJson(&comment1).Do(context.TODO())
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Add orders
 	var orders []order
@@ -380,14 +273,14 @@ func setupTestClientAndCreateIndexAndAddDocs(t logger, options ...ClientOptionFu
 	orders = append(orders, order{Article: "T-Shirt", Manufacturer: "h&m", Price: 19, Time: "2015-06-18"})
 	for i, o := range orders {
 		id := fmt.Sprintf("%d", i)
-		_, err = client.Index().Index(testOrderIndex).Type("doc").Id(id).BodyJson(&o).Do(context.TODO())
+		_, err = client.Index().Index(testIndexName).Type("order").Id(id).BodyJson(&o).Do(context.TODO())
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	// Flush
-	_, err = client.Flush().Index(testIndexName, testOrderIndex).Do(context.TODO())
+	_, err = client.Flush().Index(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,16 +294,16 @@ func setupTestClientAndCreateIndexAndAddDocsNoSource(t logger, options ...Client
 	tweet1 := tweet{User: "olivere", Message: "Welcome to Golang and Elasticsearch."}
 	tweet2 := tweet{User: "olivere", Message: "Another unrelated topic."}
 
-	_, err := client.Index().Index(testNoSourceIndexName).Type("doc").Id("1").BodyJson(&tweet1).Do(context.TODO())
+	_, err := client.Index().Index(testIndexName).Type("tweet-nosource").Id("1").BodyJson(&tweet1).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.Index().Index(testNoSourceIndexName).Type("doc").Id("2").BodyJson(&tweet2).Do(context.TODO())
+	_, err = client.Index().Index(testIndexName).Type("tweet-nosource").Id("2").BodyJson(&tweet2).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Flush
-	_, err = client.Flush().Index(testNoSourceIndexName).Do(context.TODO())
+	_, err = client.Flush().Index(testIndexName).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,20 +319,4 @@ func randomString(n int) string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
-}
-
-type lexicographically struct {
-	strings []string
-}
-
-func (l lexicographically) Len() int {
-	return len(l.strings)
-}
-
-func (l lexicographically) Less(i, j int) bool {
-	return l.strings[i] < l.strings[j]
-}
-
-func (l lexicographically) Swap(i, j int) {
-	l.strings[i], l.strings[j] = l.strings[j], l.strings[i]
 }
