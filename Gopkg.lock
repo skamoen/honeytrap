@@ -34,7 +34,14 @@
 [[projects]]
   branch = "master"
   name = "github.com/dgraph-io/badger"
-  packages = [".","options","protos","skl","table","y"]
+  packages = [
+    ".",
+    "options",
+    "protos",
+    "skl",
+    "table",
+    "y"
+  ]
   revision = "94594b20babfa448fdf604b6b58b94b14b2650d9"
 
 [[projects]]
@@ -105,14 +112,38 @@
 
 [[projects]]
   name = "github.com/google/gopacket"
-  packages = [".","layers","pcap","pcapgo"]
+  packages = [
+    ".",
+    "layers",
+    "pcap",
+    "pcapgo"
+  ]
   revision = "11c65f1ca9081dfea43b4f9643f5c155583b73ba"
   version = "v1.1.14"
 
 [[projects]]
   branch = "master"
   name = "github.com/google/netstack"
-  packages = ["ilist","sleep","tcpip","tcpip/buffer","tcpip/header","tcpip/link/fdbased","tcpip/link/rawfile","tcpip/link/tun","tcpip/network/fragmentation","tcpip/network/hash","tcpip/network/ipv4","tcpip/network/ipv6","tcpip/ports","tcpip/seqnum","tcpip/stack","tcpip/transport/tcp","tmutex","waiter"]
+  packages = [
+    "ilist",
+    "sleep",
+    "tcpip",
+    "tcpip/buffer",
+    "tcpip/header",
+    "tcpip/link/fdbased",
+    "tcpip/link/rawfile",
+    "tcpip/link/tun",
+    "tcpip/network/fragmentation",
+    "tcpip/network/hash",
+    "tcpip/network/ipv4",
+    "tcpip/network/ipv6",
+    "tcpip/ports",
+    "tcpip/seqnum",
+    "tcpip/stack",
+    "tcpip/transport/tcp",
+    "tmutex",
+    "waiter"
+  ]
   revision = "edcfca33ca347f59a1393986a5d216a5f183ae28"
 
 [[projects]]
@@ -120,18 +151,6 @@
   packages = ["."]
   revision = "ea4d1f681babbce9545c9c5f3d5194a789c89f5b"
   version = "v1.2.0"
-
-[[projects]]
-  branch = "v3"
-  name = "github.com/honeytrap/golxc"
-  packages = ["."]
-  revision = "365776ef525bf6740eb39531895cb95f7d3fb2b5"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/honeytrap/honeytrap-web"
-  packages = ["."]
-  revision = "02944754979e7be761b0a3459a99c4dc85e3bbec"
 
 [[projects]]
   branch = "master"
@@ -142,7 +161,12 @@
 [[projects]]
   branch = "master"
   name = "github.com/mailru/easyjson"
-  packages = [".","buffer","jlexer","jwriter"]
+  packages = [
+    ".",
+    "buffer",
+    "jlexer",
+    "jwriter"
+  ]
   revision = "32fa128f234d041f196a9f3e0fea5ac9772c08e1"
 
 [[projects]]
@@ -174,6 +198,16 @@
   name = "github.com/mimoo/disco"
   packages = ["libdisco"]
   revision = "15dd4b8476c9fa493b19fb83b07f4ac19f67a993"
+
+[[projects]]
+  name = "github.com/olivere/elastic"
+  packages = [
+    ".",
+    "config",
+    "uritemplates"
+  ]
+  revision = "2982cec1ae1eb496c4e6ec43b4136bedb977fec7"
+  version = "v6.1.8"
 
 [[projects]]
   name = "github.com/op/go-logging"
@@ -231,6 +265,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/skamoen/honeytrap-web"
+  packages = ["."]
+  revision = "b01af6ab1e501fc3442d87f58910d3c8e5a7289f"
+
+[[projects]]
+  branch = "master"
   name = "github.com/songgao/packets"
   packages = ["ethernet"]
   revision = "549a10cd4091c1e78542d3bb357036299cb9fcd6"
@@ -244,13 +284,30 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
-  packages = ["curve25519","ed25519","ed25519/internal/edwards25519","internal/chacha20","poly1305","ssh","ssh/terminal"]
+  packages = [
+    "curve25519",
+    "ed25519",
+    "ed25519/internal/edwards25519",
+    "internal/chacha20",
+    "poly1305",
+    "ssh",
+    "ssh/terminal"
+  ]
   revision = "8c653846df49742c4c85ec37e5d9f8d3ba657895"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
-  packages = ["bpf","context","internal/iana","internal/socket","internal/timeseries","ipv4","ipv6","trace"]
+  packages = [
+    "bpf",
+    "context",
+    "internal/iana",
+    "internal/socket",
+    "internal/timeseries",
+    "ipv4",
+    "ipv6",
+    "trace"
+  ]
   revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
 
 [[projects]]
@@ -262,14 +319,18 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix","windows","windows/registry"]
+  packages = [
+    "unix",
+    "windows",
+    "windows/registry"
+  ]
   revision = "f6cff0780e542efa0c8e864dc8fa522808f6a598"
 
 [[projects]]
-  name = "gopkg.in/olivere/elastic.v5"
-  packages = [".","config","uritemplates"]
-  revision = "02f6a01dc7f7fd2d65e89121e881aae3ba577a9a"
-  version = "v5.0.65"
+  branch = "v2"
+  name = "gopkg.in/lxc/go-lxc.v2"
+  packages = ["."]
+  revision = "2660c429a942a4a21455765c7046dde612c1baa7"
 
 [[projects]]
   name = "gopkg.in/urfave/cli.v1"
@@ -280,6 +341,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7214017e74ed75afee4b0777b3ba65653ee8afcc650b35e204964b6648ae076f"
+  inputs-digest = "650a2f3bbeb03e98cf75137e79481a7ce520a89b92a3357d225a43514e7e9ec0"
   solver-name = "gps-cdcl"
   solver-version = 1

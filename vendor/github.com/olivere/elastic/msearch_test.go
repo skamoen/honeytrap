@@ -13,6 +13,7 @@ import (
 
 func TestMultiSearch(t *testing.T) {
 	client := setupTestClientAndCreateIndex(t)
+	// client := setupTestClientAndCreateIndexAndLog(t)
 
 	tweet1 := tweet{
 		User:    "olivere",
@@ -62,6 +63,7 @@ func TestMultiSearch(t *testing.T) {
 
 	searchResult, err := client.MultiSearch().
 		Add(sreq1, sreq2).
+		Pretty(true).
 		Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
@@ -137,17 +139,17 @@ func TestMultiSearchWithStrings(t *testing.T) {
 	}
 
 	// Add all documents
-	_, err := client.Index().Index(testIndexName).Type("tweet").Id("1").BodyJson(&tweet1).Do(context.TODO())
+	_, err := client.Index().Index(testIndexName).Type("doc").Id("1").BodyJson(&tweet1).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Index().Index(testIndexName).Type("tweet").Id("2").BodyJson(&tweet2).Do(context.TODO())
+	_, err = client.Index().Index(testIndexName).Type("doc").Id("2").BodyJson(&tweet2).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = client.Index().Index(testIndexName).Type("tweet").Id("3").BodyJson(&tweet3).Do(context.TODO())
+	_, err = client.Index().Index(testIndexName).Type("doc").Id("3").BodyJson(&tweet3).Do(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +162,7 @@ func TestMultiSearchWithStrings(t *testing.T) {
 	// Spawn two search queries with one roundtrip
 	sreq1 := NewSearchRequest().Index(testIndexName, testIndexName2).
 		Source(`{"query":{"match_all":{}}}`)
-	sreq2 := NewSearchRequest().Index(testIndexName).Type("tweet").
+	sreq2 := NewSearchRequest().Index(testIndexName).Type("doc").
 		Source(`{"query":{"term":{"tags":"golang"}}}`)
 
 	searchResult, err := client.MultiSearch().

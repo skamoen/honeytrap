@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/olivere/elastic/uritemplates"
@@ -258,7 +257,7 @@ func (s *CountService) buildURL() (string, url.Values, error) {
 		params.Set("routing", s.routing)
 	}
 	if s.terminateAfter != nil {
-		params.Set("terminate_after", strconv.Itoa(*s.terminateAfter))
+		params.Set("terminate_after", fmt.Sprintf("%v", *s.terminateAfter))
 	}
 	return path, params, nil
 }

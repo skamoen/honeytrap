@@ -52,6 +52,7 @@ import (
 	"github.com/honeytrap/honeytrap/director"
 	_ "github.com/honeytrap/honeytrap/director/forward"
 	_ "github.com/honeytrap/honeytrap/director/lxc"
+	_ "github.com/honeytrap/honeytrap/director/track"
 	// _ "github.com/honeytrap/honeytrap/director/qemu"
 	// Import your directors here.
 
@@ -66,6 +67,7 @@ import (
 	_ "github.com/honeytrap/honeytrap/services/redis"
 	_ "github.com/honeytrap/honeytrap/services/smtp"
 	_ "github.com/honeytrap/honeytrap/services/ssh"
+	_ "github.com/honeytrap/honeytrap/services/telnet"
 	_ "github.com/honeytrap/honeytrap/services/vnc"
 
 	"github.com/honeytrap/honeytrap/listener"

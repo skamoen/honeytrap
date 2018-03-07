@@ -116,6 +116,7 @@ func (h HandshakeResponse) MarshalBinary() ([]byte, error) {
 }
 
 type Hello struct {
+	Token string
 	Laddr net.Addr
 	Raddr net.Addr
 }

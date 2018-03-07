@@ -31,8 +31,8 @@ func NewSearchRequest() *SearchRequest {
 	return &SearchRequest{}
 }
 
-// SearchRequest must be one of dfs_query_then_fetch, query_then_fetch
-// or query_and_fetch (deprecated in 5.3).
+// SearchRequest must be one of "dfs_query_then_fetch" or
+// "query_then_fetch".
 func (r *SearchRequest) SearchType(searchType string) *SearchRequest {
 	r.searchType = searchType
 	return r
@@ -46,12 +46,6 @@ func (r *SearchRequest) SearchTypeDfsQueryThenFetch() *SearchRequest {
 // SearchTypeQueryThenFetch sets search type to query_then_fetch.
 func (r *SearchRequest) SearchTypeQueryThenFetch() *SearchRequest {
 	return r.SearchType("query_then_fetch")
-}
-
-// SearchTypeQueryAndFetch sets search type to query_and_fetch which
-// was deprecated in 5.3.
-func (r *SearchRequest) SearchTypeQueryAndFetch() *SearchRequest {
-	return r.SearchType("query_and_fetch")
 }
 
 func (r *SearchRequest) Index(indices ...string) *SearchRequest {
@@ -130,7 +124,7 @@ func (r *SearchRequest) Source(source interface{}) *SearchRequest {
 
 // header is used e.g. by MultiSearch to get information about the search header
 // of one SearchRequest.
-// See https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search-multi-search.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.0/search-multi-search.html
 func (r *SearchRequest) header() interface{} {
 	h := make(map[string]interface{})
 	if r.searchType != "" {
@@ -183,7 +177,7 @@ func (r *SearchRequest) header() interface{} {
 //
 // Body is used e.g. by MultiSearch to get information about the search body
 // of one SearchRequest.
-// See https://www.elastic.co/guide/en/elasticsearch/reference/5.6/search-multi-search.html
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.0/search-multi-search.html
 func (r *SearchRequest) Body() (string, error) {
 	switch t := r.source.(type) {
 	default:
