@@ -409,10 +409,9 @@ func (web *web) ServeWS(w http.ResponseWriter, r *http.Request) {
 	})
 
 	filteredEvents := NewSafeArray()
-	rAddr, _, _ := net.SplitHostPort(r.RemoteAddr)
 	for _, e := range web.events.array {
 		event := e.(event.Event)
-		if event.Get("destination-ip") == rAddr || event.Get("agent-ip") == rAddr {
+		if event.Get("destination-ip") == c.remoteAddr || event.Get("agent-ip") == c.remoteAddr {
 			filteredEvents.Append(event)
 			continue
 		}

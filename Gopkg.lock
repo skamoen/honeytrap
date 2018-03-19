@@ -262,13 +262,7 @@
   packages = ["."]
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
   version = "v1.2.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/skamoen/honeytrap-web"
-  packages = ["."]
-  revision = "b01af6ab1e501fc3442d87f58910d3c8e5a7289f"
-
+  
 [[projects]]
   branch = "master"
   name = "github.com/songgao/packets"
